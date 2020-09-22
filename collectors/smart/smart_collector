@@ -93,9 +93,31 @@ parse_smartctl_scsi_attributes() {
   [ ! -z "$power_on" ] && echo "power_on_hours_raw_value{${labels},smart_id=\"9\"} ${power_on}"
   [ ! -z "$temp_cel" ] && echo "temperature_celsius_raw_value{${labels},smart_id=\"194\"} ${temp_cel}"
   [ ! -z "$lbas_read" ] && echo "total_lbas_read_raw_value{${labels},smart_id=\"242\"} ${lbas_read}"
-  [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"242\"} ${lbas_written}"
+  [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"241\"} ${lbas_written}"
   [ ! -z "$power_cycle" ] && echo "power_cycle_count_raw_value{${labels},smart_id=\"12\"} ${power_cycle}"
   [ ! -z "$grown_defects" ] && echo "grown_defects_count_raw_value{${labels},smart_id=\"12\"} ${grown_defects}"
+}
+
+parse_smartctl_nvme_attributes() {
+  local labels="$1"
+  while read line; do
+    attr_type="$(echo "${line}" | tr '=' ':' | cut -f1 -d: | sed 's/^ \+//g' | tr ' ' '_')"
+    attr_value="$(echo "${line}" | tr '=' ':' | cut -f2 -d: | sed 's/^ \+//g')"
+    case "${attr_type}" in
+    Power_On_Hours) power_on="$(echo "${attr_value}" | awk '{ printf "%e\n", $1 }')" ;;
+    Temperature) temp_cel="$(echo ${attr_value} | cut -f1 -d' ' | awk '{ printf "%e\n", $1 }')" ;;
+    Data_Units_Read) lbas_read="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
+    Data_Units_Written) lbas_written="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
+    Power_Cycles) power_cycle="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
+    Unsafe_Shutdowns) unsafe_shutdown="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
+    esac
+  done
+  [ ! -z "$power_on" ] && echo "power_on_hours_raw_value{${labels},smart_id=\"9\"} ${power_on}"
+  [ ! -z "$temp_cel" ] && echo "temperature_celsius_raw_value{${labels},smart_id=\"194\"} ${temp_cel}"
+  [ ! -z "$lbas_read" ] && echo "total_lbas_read_raw_value{${labels},smart_id=\"242\"} ${lbas_read}"
+  [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"241\"} ${lbas_written}"
+  [ ! -z "$power_cycle" ] && echo "power_cycle_count_raw_value{${labels},smart_id=\"12\"} ${power_cycle}"
+  [ ! -z "$unsafe_shutdown" ] && echo "unsafe_shutdown_count_raw_value{${labels},smart_id=\"192\"} ${unsafe_shutdown}"
 }
 
 extract_labels() {
@@ -244,6 +266,7 @@ for device in ${device_list}; do
   megaraid*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_scsi_attributes "${disk_labels}" || true ;;
   areca*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
   cciss*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
+  nvme) smartctl -A -d "${type}" "${disk}" | parse_smartctl_nvme_attributes "${disk_labels}" || true ;;
   *)
     echo "disk type is not sat, scsi or megaraid but ${type}"
     exit
