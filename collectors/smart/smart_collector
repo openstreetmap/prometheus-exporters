@@ -98,8 +98,19 @@ parse_smartctl_scsi_attributes() {
   [ ! -z "$grown_defects" ] && echo "grown_defects_count_raw_value{${labels},smart_id=\"12\"} ${grown_defects}"
 }
 
+extract_labels() {
+    local disk="$1" disk_type="$2"
+    case ${disk_type} in
+    areca,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"areca\"";;
+    cciss,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"cciss\"";;
+    megaraid,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"megaraid\"";;
+    *) echo "disk=\"${disk}\",type=\"${disk_type}\"";;
+    esac
+}
+
 extract_labels_from_smartctl_info() {
   local disk="$1" disk_type="$2"
+  local disk_labels="$(extract_labels "${disk}" "${disk_type}")"
   local model_family='<None>' device_model='<None>' serial_number='<None>' fw_version='<None>' vendor='<None>' product='<None>' revision='<None>' lun_id='<None>'
   while read line; do
     info_type="$(echo "${line}" | cut -f1 -d: | tr ' ' '_')"
@@ -115,7 +126,7 @@ extract_labels_from_smartctl_info() {
     Logical_Unit_id) lun_id="${info_value}" ;;
     esac
   done
-  echo "disk=\"${disk}\",type=\"${disk_type}\",vendor=\"${vendor}\",product=\"${product}\",revision=\"${revision}\",lun_id=\"${lun_id}\",model_family=\"${model_family}\",device_model=\"${device_model}\",serial_number=\"${serial_number}\",firmware_version=\"${fw_version}\""
+  echo "${disk_labels},vendor=\"${vendor}\",product=\"${product}\",revision=\"${revision}\",lun_id=\"${lun_id}\",model_family=\"${model_family}\",device_model=\"${device_model}\",serial_number=\"${serial_number}\",firmware_version=\"${fw_version}\""
 }
 
 parse_smartctl_info() {
@@ -204,10 +215,11 @@ for device in ${device_list}; do
   disk="$(echo ${device} | cut -f1 -d'|')"
   type="$(echo ${device} | cut -f2 -d'|')"
   active=1
-  echo "smartctl_run{disk=\"${disk}\",type=\"${type}\"}" "$(TZ=UTC date '+%s')"
+  disk_labels="$(extract_labels "${disk}" "${type}")"
+  echo "smartctl_run{${disk_labels}}" "$(TZ=UTC date '+%s')"
   # Check if the device is in a low-power mode
   smartctl -n standby -d "${type}" "${disk}" > /dev/null || active=0
-  echo "device_active{disk=\"${disk}\",type=\"${type}\"}" "${active}"
+  echo "device_active{${disk_labels}}" "${active}"
   # Skip further metrics to prevent the disk from spinning up
   test ${active} -eq 0 && continue
 
