@@ -141,6 +141,7 @@ extract_labels_from_smartctl_info() {
     Model_Family) model_family="${info_value}" ;;
     Device_Model) device_model="${info_value}" ;;
     Serial_Number) serial_number="${info_value}" ;;
+    Serial_number) serial_number="${info_value}" ;;
     Firmware_Version) fw_version="${info_value}" ;;
     Vendor) vendor="${info_value}" ;;
     Product) product="${info_value}" ;;
@@ -148,7 +149,7 @@ extract_labels_from_smartctl_info() {
     Logical_Unit_id) lun_id="${info_value}" ;;
     esac
   done
-  echo "${disk_labels},vendor=\"${vendor}\",product=\"${product}\",revision=\"${revision}\",lun_id=\"${lun_id}\",model_family=\"${model_family}\",device_model=\"${device_model}\",serial_number=\"${serial_number}\",firmware_version=\"${fw_version}\""
+  echo "${disk_labels},vendor=\"${vendor}\",product=\"${product}\",revision=\"${revision}\",lun_id=\"${lun_id}\",model_family=\"${model_family}\",device_model=\"${device_model:-${product}}\",serial_number=\"${serial_number}\",firmware_version=\"${fw_version}\""
 }
 
 parse_smartctl_info() {
