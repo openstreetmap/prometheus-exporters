@@ -1,0 +1,135 @@
+#!/usr/bin/ruby
+
+require "net/http"
+
+STATISTICS = {
+  "NoResp" => {
+    :metric => "modtile_http_response_total"
+  },
+  "NoRespOther" => {
+    :metric => "modtile_http_response_total",
+    :code => "other"
+  },
+  "NoFreshCache" => {
+    :metric => "modtile_tile_total",
+    :age => "fresh",
+    :rendered => "no"
+  },
+  "NoOldCache" => {
+    :metric => "modtile_tile_total",
+    :age => "old",
+    :rendered => "no"
+  },
+  "NoVeryOldCache" => {
+    :metric => "modtile_tile_total",
+    :age => "outdated",
+    :rendered => "no"
+  },
+  "NoFreshRender" => {
+    :metric => "modtile_tile_total",
+    :age => "fresh",
+    :rendered => "yes"
+  },
+  "NoOldRender" => {
+    :metric => "modtile_tile_total",
+    :age => "old",
+    :rendered => "attempted"
+  },
+  "NoVeryOldRender" => {
+    :metric => "modtile_tile_total",
+    :age => "outdated",
+    :rendered => "attempted"
+  },
+  "NoRespZoom" => {
+    :metric => "modtile_zoom_tile_total"
+  },
+  "NoTileBufferReads" => {
+    :metric => "modtile_read_count_total"
+  },
+  "DurationTileBufferReads" => {
+    :metric => "modtile_read_seconds_total"
+  },
+  "NoTileBufferReadZoom" => {
+    :metric => "modtile_zoom_read_count_total"
+  },
+  "DurationTileBufferReadZoom" => {
+    :metric => "modtile_zoom_read_seconds_total"
+  }
+}
+
+METRICS = {
+  "modtile_http_response_total" => {
+    :help => "Number of HTTP responses by response code",
+    :type => "counter"
+  },
+  "modtile_tile_total" => {
+    :help => "Number of tiles served",
+    :type => "counter"
+  },
+  "modtile_zoom_tile_total" => {
+    :help => "Number of tiles served by zoom level",
+    :type => "counter"
+  },
+  "modtile_read_count_total" => {
+    :help => "Number of tiles read from disk",
+    :type => "counter"
+  },
+  "modtile_read_seconds_total" => {
+    :help => "Number of seconds spend reading from disk",
+    :type => "counter"
+  },
+  "modtile_zoom_read_count_total" => {
+    :help => "Number of tiles read from disk by zoom level",
+    :type => "counter"
+  },
+  "modtile_zoom_read_seconds_total" => {
+    :help => "Number of seconds spend reading from disk by zoom level",
+    :type => "counter"
+  }
+}
+
+metrics = {}
+
+Net::HTTP.get("localhost", "/mod_tile").each_line do |line|
+  if line =~ /^([a-z]+)0?([0-9]+X*)?:\s+([0-9]+)$/i
+    key = Regexp.last_match(1)
+    suffix = Regexp.last_match(2)
+    value = Regexp.last_match(3).to_i
+    statistic = STATISTICS[key]
+    metric = statistic[:metric]
+
+    if key =~ /^Duration/
+      value = value / 1000000.0
+    end
+
+    value = statistic.slice(:code, :age, :rendered).merge(:sample => value)
+
+    if key =~ /Resp$/
+      value[:code] = suffix
+    elsif key =~ /Zoom$/
+      value[:zoom] = suffix
+    end
+
+    values = metrics[metric] ||= []
+
+    values.push(value)
+  end
+end
+
+metrics.each do |name, values|
+  metric = METRICS[name]
+
+  puts "# HELP #{name} #{metric[:help]}"
+  puts "# TYPE #{name} #{metric[:type]}"
+
+  values.each do |value|
+    sample = value.delete(:sample)
+    labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+    if labels.empty?
+      puts "#{name} #{sample}"
+    else
+      puts "#{name}{#{labels}} #{sample}"
+    end
+  end
+end
