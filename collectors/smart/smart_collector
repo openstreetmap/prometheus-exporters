@@ -102,14 +102,15 @@ parse_smartctl_nvme_attributes() {
   local labels="$1"
   while read line; do
     attr_type="$(echo "${line}" | tr '=' ':' | cut -f1 -d: | sed 's/^ \+//g' | tr ' ' '_')"
-    attr_value="$(echo "${line}" | tr '=' ':' | cut -f2 -d: | sed 's/^ \+//g')"
+    attr_value="$(echo "${line}" | tr '=' ':' | cut -f2 -d: | sed 's/^ \+//g' | sed 's/%$//')"
     case "${attr_type}" in
-    Power_On_Hours) power_on="$(echo "${attr_value}" | awk '{ printf "%e\n", $1 }')" ;;
+    Power_On_Hours) power_on="$(echo "${attr_value}" | sed -e 's/,//g' | awk '{ printf "%e\n", $1 }')" ;;
     Temperature) temp_cel="$(echo ${attr_value} | cut -f1 -d' ' | awk '{ printf "%e\n", $1 }')" ;;
     Data_Units_Read) lbas_read="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
     Data_Units_Written) lbas_written="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
     Power_Cycles) power_cycle="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
     Unsafe_Shutdowns) unsafe_shutdown="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
+    Percentage_Used) percentage_left="$(echo ${attr_value} | awk '{ printf "%e\n", 100 - $1 }')" ;;
     esac
   done
   [ ! -z "$power_on" ] && echo "power_on_hours_raw_value{${labels},smart_id=\"9\"} ${power_on}"
@@ -118,6 +119,7 @@ parse_smartctl_nvme_attributes() {
   [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"241\"} ${lbas_written}"
   [ ! -z "$power_cycle" ] && echo "power_cycle_count_raw_value{${labels},smart_id=\"12\"} ${power_cycle}"
   [ ! -z "$unsafe_shutdown" ] && echo "unsafe_shutdown_count_raw_value{${labels},smart_id=\"192\"} ${unsafe_shutdown}"
+  [ ! -z "$percentage_left" ] && echo "media_wearout_indicator_value{${labels},smart_id=\"233\"} ${percentage_left}"
 }
 
 extract_labels() {
@@ -140,6 +142,7 @@ extract_labels_from_smartctl_info() {
     case "${info_type}" in
     Model_Family) model_family="${info_value}" ;;
     Device_Model) device_model="${info_value}" ;;
+    Model_Number) device_model="${info_value}" ;;
     Serial_Number) serial_number="${info_value}" ;;
     Serial_number) serial_number="${info_value}" ;;
     Firmware_Version) fw_version="${info_value}" ;;
