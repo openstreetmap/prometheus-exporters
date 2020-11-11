@@ -1,279 +1,229 @@
-#!/bin/bash
-# Script informed by the collectd monitoring script for smartmontools (using smartctl)
-# by Samuel B. <samuel_._behan_(at)_dob_._sk> (c) 2012
-# source at: http://devel.dob.sk/collectd-scripts/
+#!/usr/bin/ruby
 
-# TODO: This probably needs to be a little more complex.  The raw numbers can have more
-#       data in them than you'd think.
-#       http://arstechnica.com/civis/viewtopic.php?p=22062211
+require "json"
 
-# Formatting done via shfmt -i 2
-# https://github.com/mvdan/sh
-set -euo pipefail
-IFS=$'\n\t'
+STATUS_BITS = [
+  "command_not_parsed",
+  "device_open_failed",
+  "device_command_failed",
+  "disk_failing",
+  "prefail_below_threshold",
+  "previous_below_threshold",
+  "error_log_has_errors",
+  "selftest_log_has_errors"
+]
 
-parse_smartctl_attributes_awk="$(
-  cat <<'SMARTCTLAWK'
-$1 ~ /^ *[0-9]+$/ && $2 ~ /^[a-zA-Z0-9_-]+$/ {
-  gsub(/-/, "_");
-  printf "%s_value{%s,smart_id=\"%s\"} %d\n", tolower($2), labels, $1, $4
-  printf "%s_worst{%s,smart_id=\"%s\"} %d\n", tolower($2), labels, $1, $5
-  printf "%s_threshold{%s,smart_id=\"%s\"} %d\n", tolower($2), labels, $1, $6
-  printf "%s_raw_value{%s,smart_id=\"%s\"} %e\n", tolower($2), labels, $1, $10
-}
-SMARTCTLAWK
-)"
+devices = []
 
-smartmon_attrs="$(
-  cat <<'SMARTMONATTRS'
-airflow_temperature_cel
-command_timeout
-current_pending_sector
-end_to_end_error
-erase_fail_count
-g_sense_error_rate
-hardware_ecc_recovered
-host_reads_mib
-host_reads_32mib
-host_writes_mib
-host_writes_32mib
-load_cycle_count
-media_wearout_indicator
-wear_leveling_count
-nand_writes_1gib
-offline_uncorrectable
-power_cycle_count
-power_on_hours
-program_fail_count
-raw_read_error_rate
-reallocated_event_count
-reallocated_sector_ct
-reported_uncorrect
-sata_downshift_count
-seek_error_rate
-spin_retry_count
-spin_up_time
-start_stop_count
-temperature_case
-temperature_celsius
-temperature_internal
-total_lbas_read
-total_lbas_written
-udma_crc_error_count
-unsafe_shutdown_count
-workld_host_reads_perc
-workld_media_wear_indic
-workload_minutes
-SMARTMONATTRS
-)"
-smartmon_attrs="$(echo ${smartmon_attrs} | xargs | tr ' ' '|')"
+IO.read("/etc/prometheus/collectors/smart.devices").split("\n") do |line|
+  device, type = line.split("|")
 
-parse_smartctl_attributes() {
-  local labels="$1"
-  local vars="$(echo "${smartmon_attrs}" | xargs | tr ' ' '|')"
-  sed 's/^ \+//g' |
-    awk -v labels="${labels}" "${parse_smartctl_attributes_awk}" 2>/dev/null |
-    grep -iE "(${smartmon_attrs})"
-}
+  if type
+    io = IO.popen(["smartctl", "-n", "standby", "-x", "-j", "-d", type, device])
+  else
+    io = IO.popen(["smartctl", "-n", "standby", "-x", "-j", device])
+  end
 
-parse_smartctl_scsi_attributes() {
-  local labels="$1"
-  while read line; do
-    attr_type="$(echo "${line}" | tr '=' ':' | cut -f1 -d: | sed 's/^ \+//g' | tr ' ' '_')"
-    attr_value="$(echo "${line}" | tr '=' ':' | cut -f2 -d: | sed 's/^ \+//g')"
-    case "${attr_type}" in
-    number_of_hours_powered_up_) power_on="$(echo "${attr_value}" | awk '{ printf "%e\n", $1 }')" ;;
-    Current_Drive_Temperature) temp_cel="$(echo ${attr_value} | cut -f1 -d' ' | awk '{ printf "%e\n", $1 }')" ;;
-    Blocks_sent_to_initiator_) lbas_read="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Blocks_received_from_initiator_) lbas_written="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Accumulated_start-stop_cycles) power_cycle="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Elements_in_grown_defect_list) grown_defects="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    esac
-  done
-  [ ! -z "$power_on" ] && echo "power_on_hours_raw_value{${labels},smart_id=\"9\"} ${power_on}"
-  [ ! -z "$temp_cel" ] && echo "temperature_celsius_raw_value{${labels},smart_id=\"194\"} ${temp_cel}"
-  [ ! -z "$lbas_read" ] && echo "total_lbas_read_raw_value{${labels},smart_id=\"242\"} ${lbas_read}"
-  [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"241\"} ${lbas_written}"
-  [ ! -z "$power_cycle" ] && echo "power_cycle_count_raw_value{${labels},smart_id=\"12\"} ${power_cycle}"
-  [ ! -z "$grown_defects" ] && echo "grown_defects_count_raw_value{${labels},smart_id=\"12\"} ${grown_defects}"
-}
+  output = JSON.load(io)
 
-parse_smartctl_nvme_attributes() {
-  local labels="$1"
-  while read line; do
-    attr_type="$(echo "${line}" | tr '=' ':' | cut -f1 -d: | sed 's/^ \+//g' | tr ' ' '_')"
-    attr_value="$(echo "${line}" | tr '=' ':' | cut -f2 -d: | sed 's/^ \+//g' | sed 's/%$//')"
-    case "${attr_type}" in
-    Power_On_Hours) power_on="$(echo "${attr_value}" | sed -e 's/,//g' | awk '{ printf "%e\n", $1 }')" ;;
-    Temperature) temp_cel="$(echo ${attr_value} | cut -f1 -d' ' | awk '{ printf "%e\n", $1 }')" ;;
-    Data_Units_Read) lbas_read="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Data_Units_Written) lbas_written="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Power_Cycles) power_cycle="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Unsafe_Shutdowns) unsafe_shutdown="$(echo ${attr_value} | awk '{ printf "%e\n", $1 }')" ;;
-    Percentage_Used) percentage_left="$(echo ${attr_value} | awk '{ printf "%e\n", 100 - $1 }')" ;;
-    esac
-  done
-  [ ! -z "$power_on" ] && echo "power_on_hours_raw_value{${labels},smart_id=\"9\"} ${power_on}"
-  [ ! -z "$temp_cel" ] && echo "temperature_celsius_raw_value{${labels},smart_id=\"194\"} ${temp_cel}"
-  [ ! -z "$lbas_read" ] && echo "total_lbas_read_raw_value{${labels},smart_id=\"242\"} ${lbas_read}"
-  [ ! -z "$lbas_written" ] && echo "total_lbas_written_raw_value{${labels},smart_id=\"241\"} ${lbas_written}"
-  [ ! -z "$power_cycle" ] && echo "power_cycle_count_raw_value{${labels},smart_id=\"12\"} ${power_cycle}"
-  [ ! -z "$unsafe_shutdown" ] && echo "unsafe_shutdown_count_raw_value{${labels},smart_id=\"192\"} ${unsafe_shutdown}"
-  [ ! -z "$percentage_left" ] && echo "media_wearout_indicator_value{${labels},smart_id=\"233\"} ${percentage_left}"
-}
+  next unless output["device"]
 
-extract_labels() {
-    local disk="$1" disk_type="$2"
-    case ${disk_type} in
-    areca,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"areca\"";;
-    cciss,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"cciss\"";;
-    megaraid,*) echo "disk=\"${disk}/${disk_type#*,}\",type=\"megaraid\"";;
-    *) echo "disk=\"${disk}\",type=\"${disk_type}\"";;
-    esac
-}
+  data = {
+    :device => output["device"]["info_name"].sub(/\s+\[(?:SAT|SCSI)\]$/, ""),
+    :protocol => output["device"]["protocol"],
+    :serial_number => output["serial_number"]
+  }
 
-extract_labels_from_smartctl_info() {
-  local disk="$1" disk_type="$2"
-  local disk_labels="$(extract_labels "${disk}" "${disk_type}")"
-  local model_family='<None>' device_model='<None>' serial_number='<None>' fw_version='<None>' vendor='<None>' product='<None>' revision='<None>' lun_id='<None>'
-  while read line; do
-    info_type="$(echo "${line}" | cut -f1 -d: | tr ' ' '_')"
-    info_value="$(echo "${line}" | cut -f2- -d: | sed 's/^ \+//g' | sed 's/"/\\"/')"
-    case "${info_type}" in
-    Model_Family) model_family="${info_value}" ;;
-    Device_Model) device_model="${info_value}" ;;
-    Model_Number) device_model="${info_value}" ;;
-    Serial_Number) serial_number="${info_value}" ;;
-    Serial_number) serial_number="${info_value}" ;;
-    Firmware_Version) fw_version="${info_value}" ;;
-    Vendor) vendor="${info_value}" ;;
-    Product) product="${info_value}" ;;
-    Revision) revision="${info_value}" ;;
-    Logical_Unit_id) lun_id="${info_value}" ;;
-    esac
-  done
-  echo "${disk_labels},vendor=\"${vendor}\",product=\"${product}\",revision=\"${revision}\",lun_id=\"${lun_id}\",model_family=\"${model_family}\",device_model=\"${device_model:-${product}}\",serial_number=\"${serial_number}\",firmware_version=\"${fw_version}\""
-}
+  if data[:protocol] == "SCSI"
+    data[:vendor] = output["vendor"]
+    data[:product] = output["product"]
+    data[:firmware_version] = output["revision"]
+  elsif output["model_name"] =~ / /
+    data[:vendor], data[:product] = output["model_name"].split
+    data[:firmware_version] = output["firmware_version"]
+  else
+    data[:product] = output["model_name"]
+    data[:firmware_version] = output["firmware_version"]
+  end
 
-parse_smartctl_info() {
-  local -i smart_available=0 smart_enabled=0 smart_healthy=0 sector_size_log=512 sector_size_phy=512
-  local labels="$1"
-  while read line; do
-    info_type="$(echo "${line}" | cut -f1 -d: | tr ' ' '_')"
-    info_value="$(echo "${line}" | cut -f2- -d: | sed 's/^ \+//g' | sed 's/"/\\"/')"
-    if [[ "${info_type}" == 'SMART_support_is' ]]; then
-      case "${info_value:0:7}" in
-      Enabled) smart_enabled=1 ;;
-      Availab) smart_available=1 ;;
-      Unavail) smart_available=0 ;;
-      esac
-    fi
-    if [[ "${info_type}" == 'SMART_overall-health_self-assessment_test_result' ]]; then
-      case "${info_value:0:6}" in
-      PASSED) smart_healthy=1 ;;
-      esac
-    elif [[ "${info_type}" == 'SMART_Health_Status' ]]; then
-      case "${info_value:0:2}" in
-      OK) smart_healthy=1 ;;
-      esac
-    elif [[ "${info_type}" == 'Sector_Size' ]]; then
-        sector_size_log=$(echo "$info_value" | cut -d' ' -f1)
-        sector_size_phy=$(echo "$info_value" | cut -d' ' -f1)
-    elif [[ "${info_type}" == 'Sector_Sizes' ]]; then
-        sector_size_log="$(echo "$info_value" | cut -d' ' -f1)"
-        sector_size_phy="$(echo "$info_value" | cut -d' ' -f4)"
-    fi
-  done
-  echo "device_smart_available{${labels}} ${smart_available}"
-  echo "device_smart_enabled{${labels}} ${smart_enabled}"
-  echo "device_smart_healthy{${labels}} ${smart_healthy}"
-  echo "device_sector_size_logical{${labels}} ${sector_size_log}"
-  echo "device_sector_size_physical{${labels}} ${sector_size_phy}"
-}
+  if data[:protocol] == "NVMe"
+    data[:rotation_rate] = "0"
+  else
+    data[:rotation_rate] = output["rotation_rate"]
+  end
 
-parse_smartctl_returnvalue() {
-  local returnvalue=$1
-  local labels=$2
+  data[:labels] = data.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
 
-  for ((i=0; i<8; i++)); do
-    case $i in
-      0) echo -n "smartctl_statusbit_commandline_not_parsed{${labels}} " ;;
-      1) echo -n "smartctl_statusbit_device_open_failed{${labels}} " ;;
-      2) echo -n "smartctl_statusbit_device_command_failed{${labels}} " ;;
-      3) echo -n "smartctl_statusbit_disk_failing{${labels}} " ;;
-      4) echo -n "smartctl_statusbit_prefail_attributes_below_thresh{${labels}} " ;;
-      5) echo -n "smartctl_statusbit_disk_ok_previous_prefail_attributes{${labels}} " ;;
-      6) echo -n "smartctl_statusbit_device_error_log_has_errors{${labels}} " ;;
-      7) echo -n "smartctl_statusbit_device_selftest_log_has_errors{${labels}} " ;;
-    esac
-    echo "$((status & 2**i && 1))"
-  done
-}
+  data[:exit_status] = output["smartctl"]["exit_status"]
 
-output_format_awk="$(
-  cat <<'OUTPUTAWK'
-BEGIN { v = "" }
-v != $1 {
-  print "# HELP smartmon_" $1 " SMART metric " $1;
-  print "# TYPE smartmon_" $1 " gauge";
-  v = $1
-}
-{print "smartmon_" $0}
-OUTPUTAWK
-)"
+  if output["smart_status"]
+    data[:health_status] = if output["smart_status"]["passed"] == true
+                             1
+                           else
+                             0
+                           end
+  end
 
-format_output() {
-  sort |
-    awk -F'{' "${output_format_awk}"
-}
+  if output["user_capacity"]
+    data[:capacity_bytes] = output["user_capacity"]["bytes"]
+  elsif output["nvme_total_capacity"]
+    data[:capacity_bytes] = output["nvme_total_capacity"]
+  end
 
-smartctl_version="$(smartctl -V | head -n1 | awk '$1 == "smartctl" {print $2}')"
+  if output["temperature"]
+    data[:temperature_celsius] = output["temperature"]["current"]
+  end
 
-echo "smartctl_version{version=\"${smartctl_version}\"} 1" | format_output
+  if output["power_cycle_count"]
+    data[:power_cycle_count] = output["power_cycle_count"]
+  elsif output["ata_smart_attributes"]
+    start_stop_count = output["ata_smart_attributes"]["table"].find do |attribute|
+      attribute["name"] == "Start_Stop_Count"
+    end
 
-if [[ "$(expr "${smartctl_version}" : '\([0-9]*\)\..*')" -lt 6 ]]; then
-  exit
-fi
+    if start_stop_count
+      data[:power_cycle_count] = start_stop_count["raw"]["value"]
+    end
+  end
 
-device_list="$(cat /etc/prometheus/collectors/smart.devices)"
+  if output["power_on_time"]
+    power_on_hours = output["power_on_time"]["hours"].to_i
+    power_on_minutes = output["power_on_time"]["hours"].to_i || 0
 
-for device in ${device_list}; do
-  disk="$(echo ${device} | cut -f1 -d'|')"
-  type="$(echo ${device} | cut -f2 -d'|')"
-  active=1
-  disk_labels="$(extract_labels "${disk}" "${type}")"
-  echo "smartctl_run{${disk_labels}}" "$(TZ=UTC date '+%s')"
-  # Check if the device is in a low-power mode
-  smartctl -n standby -d "${type}" "${disk}" > /dev/null || active=0
-  echo "device_active{${disk_labels}}" "${active}"
-  # Skip further metrics to prevent the disk from spinning up
-  test ${active} -eq 0 && continue
+    data[:power_on_seconds] = power_on_hours * 3600 + power_on_minutes * 60
+  end
 
-  # Get the SMART information and health,
-  # Allow non-zero exit code and store it
-  set +e
-  smart_info="$(smartctl -i -H -d "${type}" "${disk}")"
-  status=$?
-  set -e
+  if output["scsi_percentage_used_endurance_indicator"]
+    data[:percentage_used] = output["scsi_percentage_used_endurance_indicator"]
+  elsif output["nvme_smart_health_information_log"]
+    data[:percentage_used] = output["nvme_smart_health_information_log"]["percentage_used"]
+  elsif output["ata_smart_attributes"]
+    media_wearout_indicator = output["ata_smart_attributes"]["table"].find do |attribute|
+      attribute["name"] == "Media_Wearout_Indicator"
+    end
 
-  disk_labels="$(echo "$smart_info" | extract_labels_from_smartctl_info "${disk}" "${type}")"
-  echo "$smart_info" | parse_smartctl_info "${disk_labels}"
+    if media_wearout_indicator
+      data[:percentage_used] = 100 - media_wearout_indicator["value"]
+    end
+  end
 
-  # Parse out smartctl's exit code into separate metrics
-  parse_smartctl_returnvalue $status "${disk_labels}"
+  if output["scsi_error_counter_log"]
+    data[:read_bytes_total] = output["scsi_error_counter_log"]["read"]["gigabytes_processed"].to_f * 1024 * 1024 * 1024
+    data[:write_bytes_total] = output["scsi_error_counter_log"]["write"]["gigabytes_processed"].to_f * 1024 * 1024 * 1024
+  elsif output["nvme_smart_health_information_log"]
+    logical_block_size = output["logical_block_size"] || 512
+    
+    data[:read_bytes_total] = output["nvme_smart_health_information_log"]["data_units_read"] * logical_block_size
+    data[:write_bytes_total] = output["nvme_smart_health_information_log"]["data_units_written"] * logical_block_size
+  elsif output["ata_smart_attributes"]
+    host_reads_32mib = output["ata_smart_attributes"]["table"].find do |attribute|
+      attribute["name"] == "Host_Reads_32MiB"
+    end
 
-  # Get the SMART attributes
-  case ${type} in
-  sat) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
-  sat+megaraid*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
-  scsi) smartctl -A -d "${type}" "${disk}" | parse_smartctl_scsi_attributes "${disk_labels}" || true ;;
-  megaraid*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_scsi_attributes "${disk_labels}" || true ;;
-  areca*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
-  cciss*) smartctl -A -d "${type}" "${disk}" | parse_smartctl_attributes "${disk_labels}" || true ;;
-  nvme) smartctl -A -d "${type}" "${disk}" | parse_smartctl_nvme_attributes "${disk_labels}" || true ;;
-  *)
-    echo "disk type is not sat, scsi or megaraid but ${type}"
-    exit
-    ;;
-  esac
-done | format_output
+    host_writes_32mib = output["ata_smart_attributes"]["table"].find do |attribute|
+      attribute["name"] == "Host_Writes_32MiB"
+    end
+
+    if host_reads_32mib
+      data[:read_bytes_total] = host_reads_32mib["raw"]["value"] * 32 * 1024 * 1024
+    end
+
+    if host_writes_32mib
+      data[:write_bytes_total] = host_writes_32mib["raw"]["value"] * 32 * 1024 * 1024
+    end
+  end
+
+  devices << data
+end
+
+puts "# HELP smart_info Device information"
+puts "# TYPE smart_info gauge"
+
+devices.each do |data|
+  puts "smart_info{#{data[:labels]}} 1"
+end
+
+puts "# HELP smart_command_status Flag values from smartctl exit status"
+puts "# TYPE smart_command_status gauge"
+
+devices.each do |data|
+  STATUS_BITS.each_with_index do |name, bit|
+    value = (data[:exit_status] >> bit) & 1
+
+    puts "smart_command_status{device=\"#{data[:device]}\",flag=\"#{name}\"} #{value}"
+  end
+end
+
+puts "# HELP smart_health_status Overall health status (0 = fail, 1 = pass)"
+puts "# TYPE smart_health_status gauge"
+
+devices.each do |data|
+  if data[:health_status]
+    puts "smart_health_status{device=\"#{data[:device]}\"} #{data[:health_status]}"
+  end
+end
+
+puts "# HELP smart_capacity_bytes Capacity of the device in bytes"
+puts "# TYPE smart_capacity_bytes gauge"
+
+devices.each do |data|
+  if data[:capacity_bytes]
+    puts "smart_capacity_bytes{device=\"#{data[:device]}\"} #{data[:capacity_bytes]}"
+  end
+end
+
+puts "# HELP smart_temperature_celsius Temperature of the device in degrees celsius"
+puts "# TYPE smart_temperature_celsius gauge"
+
+devices.each do |data|
+  if data[:temperature_celsius]
+    puts "smart_temperature_celsius{device=\"#{data[:device]}\"} #{data[:temperature_celsius]}"
+  end
+end
+
+puts "# HELP smart_power_cycle_count Number of times the device has been power cycled"
+puts "# TYPE smart_power_cycle_count gauge"
+
+devices.each do |data|
+  if data[:power_cycle_count]
+    puts "smart_power_cycle_count{device=\"#{data[:device]}\"} #{data[:power_cycle_count]}"
+  end
+end
+
+puts "# HELP smart_power_on_seconds Number of seconds the device has been powered on"
+puts "# TYPE smart_power_on_seconds gauge"
+
+devices.each do |data|
+  if data[:power_on_seconds]
+    puts "smart_power_on_seconds{device=\"#{data[:device]}\"} #{data[:power_on_seconds]}"
+  end
+end
+
+puts "# HELP smart_percentage_used Percentage of device's expected life which has been used"
+puts "# TYPE smart_percentage_used gauge"
+
+devices.each do |data|
+  if data[:percentage_used]
+    puts "smart_percentage_used{device=\"#{data[:device]}\"} #{data[:percentage_used]}"
+  end
+end
+
+puts "# HELP smart_read_bytes_total Total number of bytes read"
+puts "# TYPE smart_read_bytes_total counter"
+
+devices.each do |data|
+  if data[:read_bytes_total]
+    puts "smart_read_bytes_total{device=\"#{data[:device]}\"} #{data[:read_bytes_total]}"
+  end
+end
+
+puts "# HELP smart_write_bytes_total Total number of bytes written"
+puts "# TYPE smart_write_bytes_total counter"
+
+devices.each do |data|
+  if data[:write_bytes_total]
+    puts "smart_write_bytes_total{device=\"#{data[:device]}\"} #{data[:write_bytes_total]}"
+  end
+end
+
+exit 0
