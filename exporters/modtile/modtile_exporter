@@ -100,7 +100,10 @@ options = GetoptLong.new(
 options.each do |option, argument|
   case option
   when "--web.listen-address"
-    bind_address, port = argument.split(":")
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
   end
 end
 
