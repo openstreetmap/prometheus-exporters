@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 
+require "getoptlong"
 require "net/http"
+require "webrick"
 
 STATISTICS = {
   "NoResp" => {
@@ -88,48 +90,73 @@ METRICS = {
   }
 }
 
-metrics = {}
+bind_address = "0.0.0.0"
+port = "9494"
 
-Net::HTTP.get("localhost", "/mod_tile").each_line do |line|
-  if line =~ /^([a-z]+)0?([0-9]+X*)?:\s+([0-9]+)$/i
-    key = Regexp.last_match(1)
-    suffix = Regexp.last_match(2)
-    value = Regexp.last_match(3).to_i
-    statistic = STATISTICS[key]
-    metric = statistic[:metric]
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
 
-    if key =~ /^Duration/
-      value = value / 1000000.0
-    end
-
-    value = statistic.slice(:code, :age, :rendered).merge(:sample => value)
-
-    if key =~ /Resp$/
-      value[:code] = suffix
-    elsif key =~ /Zoom$/
-      value[:zoom] = suffix
-    end
-
-    values = metrics[metric] ||= []
-
-    values.push(value)
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    bind_address, port = argument.split(":")
   end
 end
 
-metrics.each do |name, values|
-  metric = METRICS[name]
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
 
-  puts "# HELP #{name} #{metric[:help]}"
-  puts "# TYPE #{name} #{metric[:type]}"
+server.mount_proc "/metrics" do |_request, response|
+  response.body = ""
 
-  values.each do |value|
-    sample = value.delete(:sample)
-    labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+  metrics = {}
 
-    if labels.empty?
-      puts "#{name} #{sample}"
-    else
-      puts "#{name}{#{labels}} #{sample}"
+  Net::HTTP.get("localhost", "/mod_tile").each_line do |line|
+    if line =~ /^([a-z]+)0?([0-9]+X*)?:\s+([0-9]+)$/i
+      key = Regexp.last_match(1)
+      suffix = Regexp.last_match(2)
+      value = Regexp.last_match(3).to_i
+      statistic = STATISTICS[key]
+      metric = statistic[:metric]
+
+      if key =~ /^Duration/
+        value = value / 1000000.0
+      end
+
+      value = statistic.slice(:code, :age, :rendered).merge(:sample => value)
+
+      if key =~ /Resp$/
+        value[:code] = suffix
+      elsif key =~ /Zoom$/
+        value[:zoom] = suffix
+      end
+
+      values = metrics[metric] ||= []
+
+      values.push(value)
+    end
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      if labels.empty?
+        response.body << "#{name} #{sample}\n"
+      else
+        response.body << "#{name}{#{labels}} #{sample}\n"
+      end
     end
   end
 end
+
+server.start

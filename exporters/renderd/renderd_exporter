@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 
 require "date"
+require "getoptlong"
+require "webrick"
 
 STATISTICS = {
   "ReqQueueLength" => {
@@ -101,47 +103,72 @@ METRICS = {
   }
 }
 
-metrics = {}
+bind_address = "0.0.0.0"
+port = "9393"
 
-File.open("/var/run/renderd/renderd.stats").each_line do |line|
-  if line =~ /^([a-z]+)0?([0-9]+)?:\s+([0-9]+)$/i
-    key = Regexp.last_match(1)
-    zoom = Regexp.last_match(2)
-    value = Regexp.last_match(3).to_i
-    statistic = STATISTICS[key]
-    metric = statistic[:metric]
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
 
-    if key =~ /^Time/
-      value = value / 1000.0
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    bind_address, port = argument.split(":")
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.body = ""
+
+  metrics = {}
+
+  File.open("/var/run/renderd/renderd.stats").each_line do |line|
+    if line =~ /^([a-z]+)0?([0-9]+)?:\s+([0-9]+)$/i
+      key = Regexp.last_match(1)
+      zoom = Regexp.last_match(2)
+      value = Regexp.last_match(3).to_i
+      statistic = STATISTICS[key]
+      metric = statistic[:metric]
+
+      if key =~ /^Time/
+        value = value / 1000.0
+      end
+
+      value = statistic.slice(:queue).merge(:sample => value)
+
+      value[:zoom] = zoom if zoom
+
+      values = metrics[metric] ||= []
+
+      values.push(value)
     end
-
-    value = statistic.slice(:queue).merge(:sample => value)
-
-    value[:zoom] = zoom if zoom
-
-    values = metrics[metric] ||= []
-
-    values.push(value)
   end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      response.body << "#{name}{#{labels}} #{sample}\n"
+    end
+  end
+
+  replication_timestamp = %x(osmium fileinfo --extended --get=data.timestamp.last /var/lib/replicate/changes-latest.osc.gz)
+  replication_delay = Time.now - DateTime.parse(replication_timestamp).to_time
+
+  response.body << "# HELP renderd_replication_delay Replication delay in seconds\n"
+  response.body << "# TYPE renderd_replication_delay gauge\n"
+  response.body << "renderd_replication_delay #{replication_delay}\n"
 end
 
-metrics.each do |name, values|
-  metric = METRICS[name]
-
-  puts "# HELP #{name} #{metric[:help]}"
-  puts "# TYPE #{name} #{metric[:type]}"
-
-  values.each do |value|
-    sample = value.delete(:sample)
-    labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
-
-    puts "#{name}{#{labels}} #{sample}"
-  end
-end
-
-replication_timestamp = %x(osmium fileinfo --extended --get=data.timestamp.last /var/lib/replicate/changes-latest.osc.gz)
-replication_delay = Time.now - DateTime.parse(replication_timestamp).to_time
-
-puts "# HELP renderd_replication_delay Replication delay in seconds"
-puts "# TYPE renderd_replication_delay gauge"
-puts "renderd_replication_delay #{replication_delay}"
+server.start
