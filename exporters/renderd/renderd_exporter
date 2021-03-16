@@ -166,12 +166,15 @@ server.mount_proc "/metrics" do |_request, response|
     end
   end
 
-  replication_timestamp = %x(osmium fileinfo --extended --get=data.timestamp.last /var/lib/replicate/changes-latest.osc.gz)
-  replication_delay = Time.now - DateTime.parse(replication_timestamp).to_time
+  if File.exist?('/var/lib/replicate/changes-latest.osc.gz') then
+    replication_timestamp = %x(osmium fileinfo --extended --get=data.timestamp.last /var/lib/replicate/changes-latest.osc.gz)
+    replication_delay = Time.now - DateTime.parse(replication_timestamp).to_time
 
-  response.body << "# HELP renderd_replication_delay Replication delay in seconds\n"
-  response.body << "# TYPE renderd_replication_delay gauge\n"
-  response.body << "renderd_replication_delay #{replication_delay}\n"
+    response.body << "# HELP renderd_replication_delay Replication delay in seconds\n"
+    response.body << "# TYPE renderd_replication_delay gauge\n"
+    response.body << "renderd_replication_delay #{replication_delay}\n"
+  end
+
 end
 
 server.start
