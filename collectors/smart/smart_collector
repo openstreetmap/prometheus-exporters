@@ -99,7 +99,13 @@ IO.read("/etc/prometheus/collectors/smart.devices").split("\n") do |line|
     data[:percentage_used] = output["nvme_smart_health_information_log"]["percentage_used"]
   elsif output["ata_smart_attributes"]
     media_wearout_indicator = output["ata_smart_attributes"]["table"].find do |attribute|
-      attribute["name"] == "Media_Wearout_Indicator"
+      attribute["name"] == "Media_Wearout_Indicator" ||
+        attribute["name"] == "Percent_Life_Remaining" ||
+        attribute["name"] == "Percent_Lifetime_Remain" ||
+        attribute["name"] == "Wear_Leveling_Count" ||
+        ( data[:rotation_rate] == 0 &&
+          attribute["name"] == "Unknown_Attribute" &&
+          ( attribute["id"] == 173 || attribute["id"] == 231 ) )
     end
 
     if media_wearout_indicator
