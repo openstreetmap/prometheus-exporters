@@ -1,0 +1,98 @@
+#!/usr/bin/ruby
+
+require "date"
+require "getoptlong"
+require "webrick"
+
+METRICS = {
+  "fail2ban_failed_current" => {
+    :help => "Number of currently failed connections",
+    :type => "gauge"
+  },
+  "fail2ban_failed_total" => {
+    :help => "Total number of failed connections",
+    :type => "counter"
+  },
+  "fail2ban_banned_current" => {
+    :help => "Number of currently banned IP addresses",
+    :type => "gauge"
+  },
+  "fail2ban_banned_total" => {
+    :help => "Total number of banned IP addresses",
+    :type => "counter"
+  }
+}
+
+bind_address = "0.0.0.0"
+port = "9635"
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.body = ""
+
+  metrics = {}
+
+  jails = IO.popen(["fail2ban-client", "status"]) do |io|
+    Regexp.last_match(1).split(", ") if io.read =~ /\s+Jail list:\s+(.*)$/
+  end
+
+  jails.each do |jail|
+    IO.popen(["fail2ban-client", "status", jail]) do |io|
+      io.each do |line|
+        if line =~ /\sCurrently failed:\s+(\d+)$/
+          metric = "fail2ban_failed_current"
+          value = Regexp.last_match(1).to_i
+        elsif line =~ /\sTotal failed:\s+(\d+)$/
+          metric = "fail2ban_failed_total"
+          value = Regexp.last_match(1).to_i
+        elsif line =~ /\sCurrently banned:\s+(\d+)$/
+          metric = "fail2ban_banned_current"
+          value = Regexp.last_match(1).to_i
+        elsif line =~ /\sTotal banned:\s+(\d+)$/
+          metric = "fail2ban_banned_total"
+          value = Regexp.last_match(1).to_i
+        end
+
+        if metric
+          values = metrics[metric] ||= []
+
+          values.push({ :jail => jail, :sample => value })
+        end
+      end
+    end
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      response.body << "#{name}{#{labels}} #{sample}\n"
+    end
+  end
+end
+
+server.start
