@@ -82,6 +82,8 @@ Thread.new do
       request_duration_seconds[type][match][:count] += 1
       request_duration_seconds[type][match][:sum] += duration
     end
+  rescue StandardError
+    # Ignore errors parsing log lines
   end
 end
 
