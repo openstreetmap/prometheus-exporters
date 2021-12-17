@@ -131,7 +131,12 @@ server.mount_proc "/metrics" do |_request, response|
     end
   end
 
-  replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from lastimportdate) FROM import_status").values.first.first.to_f
+  begin
+    replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from lastimportdate) FROM import_status").values.first.first.to_f
+  rescue PG::UnableToSend
+    conn.reset
+    retry
+  end
 
   response.body << "# HELP nominatim_replication_delay Replication delay in seconds\n";
   response.body << "# TYPE nominatim_replication_delay gauge\n";
