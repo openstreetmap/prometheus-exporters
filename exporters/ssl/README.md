@@ -22,16 +22,14 @@ metric indicates if the probe has been successful.
 
 ### Docker
 
-    docker pull ribbybibby/ssl-exporter
     docker run -p 9219:9219 ribbybibby/ssl-exporter:latest <flags>
 
 ### Release process
 
-- Update the `VERSION` file in this repository and commit to master
-- [This github action](.github/workflows/release.yaml) will add a changelog and
-  upload binaries in response to a release being created in Github
-- Dockerhub will build and tag a new container image in response to tags of the
-  format `/^v[0-9.]+$/`
+- Create a release in Github with a semver tag and GH actions will:
+  - Add a changelog
+  - Upload binaries
+  - Build and push a Docker image
 
 ## Usage
 
@@ -250,6 +248,11 @@ configuration file with `--config.file`. The file is written in yaml format,
 defined by the schema below.
 
 ```
+# The default module to use. If omitted, then the module must be provided by the
+# 'module' query parameter
+default_module: <string>
+
+# Module configuration
 modules: [<module>]
 ```
 
@@ -258,6 +261,10 @@ modules: [<module>]
 ```
 # The type of probe (https, tcp, file, kubernetes, kubeconfig)
 prober: <prober_string>
+
+# The probe target. If set, then the 'target' query parameter is ignored.
+# If omitted, then the 'target' query parameter is required.
+target: <string>
 
 # How long the probe will wait before giving up.
 [ timeout: <duration> ]
@@ -276,6 +283,10 @@ prober: <prober_string>
 ```
 # Disable target certificate validation.
 [ insecure_skip_verify: <boolean> | default = false ]
+
+# Configure TLS renegotiation support.
+# Valid options: never, once, freely
+[ renegotiation: <string> | default = never ]
 
 # The CA cert to use for the targets.
 [ ca_file: <filename> ]
@@ -300,7 +311,7 @@ prober: <prober_string>
 ### <tcp_probe>
 
 ```
-# Use the STARTTLS command before starting TLS for those protocols that support it (smtp, ftp, imap, postgres)
+# Use the STARTTLS command before starting TLS for those protocols that support it (smtp, ftp, imap, pop3, postgres)
 [ starttls: <string> ]
 ```
 
@@ -380,5 +391,5 @@ trust.
 
 ## Grafana
 
-You can find a simple dashboard [here](grafana/dashboard.json) that tracks
+You can find a simple dashboard [here](contrib/grafana/dashboard.json) that tracks
 certificate expiration dates and target connection errors.
