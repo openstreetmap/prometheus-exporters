@@ -20,9 +20,9 @@ ohai[:hardware][:disk][:arrays].each do |array|
 end
 
 ohai[:hardware][:disk][:disks].each do |disk|
-  controller = ohai[:hardware][:disk][:controllers][disk[:controller]]
-
   if disk[:smart_device]
+    controller = ohai[:hardware][:disk][:controllers][disk[:controller]]
+
     if controller && controller[:device]
       device = controller[:device]
       smart_device = disk[:smart_device]
