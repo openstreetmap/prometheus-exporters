@@ -1,0 +1,84 @@
+#!/opt/chef/embedded/bin/ruby
+
+require "json"
+require "ohai"
+
+arrays = []
+disks = []
+
+ohai = Ohai::System.new(:directory => "/etc/chef/ohai")
+
+ohai = ohai.all_plugins(["hardware"])
+
+ohai[:hardware][:disk][:arrays].each do |array|
+  arrays << {
+    :device => array[:device],
+    :raid => array[:raid_level],
+    :disks => array[:disks].count,
+    :status => array[:status]
+  }
+end
+
+ohai[:hardware][:disk][:disks].each do |disk|
+  controller = ohai[:hardware][:disk][:controllers][disk[:controller]]
+
+  if disk[:smart_device]
+    if controller && controller[:device]
+      device = controller[:device]
+      smart_device = disk[:smart_device]
+    elsif disk[:device]
+      device = disk[:device]
+      smart_device = disk[:smart_device]
+    end
+  elsif disk[:device] =~ %r{^(/dev/nvme\d+)n\d+$}
+    device = Regexp.last_match(1)
+  elsif disk[:device]
+    device = disk[:device]
+  end
+
+  if device
+    if smart_device
+      io = IO.popen(["smartctl", "-n", "standby", "-i", "-j", "-d", smart_device, device])
+    else
+      io = IO.popen(["smartctl", "-n", "standby", "-i", "-j", device])
+    end
+
+    output = JSON.load(io)
+
+    disk = {
+      :device => output["device"]["info_name"].sub(/\s+\[(?:SAT|SCSI)\]$/, ""),
+      :protocol => output["device"]["protocol"],
+      :serial_number => output["serial_number"],
+      :status => disk[:status]
+    }
+
+    if disk[:protocol] == "SCSI"
+      disk[:vendor] = output["vendor"]
+      disk[:product] = output["product"]
+    elsif output["model_name"] =~ / /
+      disk[:vendor], disk[:product] = output["model_name"].split
+    else
+      disk[:product] = output["model_name"]
+    end
+
+    disks << disk
+  end
+end
+
+puts "# HELP ohai_array_info Disk array information"
+puts "# TYPE ohai_array_info gauge"
+
+arrays.each do |array|
+  labels = array.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+
+  puts "ohai_array_info{#{labels}} 1"
+end
+
+puts "# HELP ohai_disk_info Disk information"
+puts "# TYPE ohai_disk_info gauge"
+
+disks.each do |disk|
+  labels = disk.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+
+  puts "ohai_disk_info{#{labels}} 1"
+end
