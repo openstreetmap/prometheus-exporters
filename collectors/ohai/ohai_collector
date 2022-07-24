@@ -45,6 +45,8 @@ ohai[:hardware][:disk][:disks].each do |disk|
 
     output = JSON.load(io)
 
+    next unless output["device"]
+
     disk = {
       :device => output["device"]["info_name"].sub(/\s+\[(?:SAT|SCSI)\]$/, ""),
       :protocol => output["device"]["protocol"],
