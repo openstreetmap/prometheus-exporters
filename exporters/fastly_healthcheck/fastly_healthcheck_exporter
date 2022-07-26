@@ -50,11 +50,20 @@ server.mount_proc "/metrics" do |_request, response|
         healthcheck = JSON.parse(healthcheck.body)
 
         healthcheck.each do |pop|
+          datacenter = if pop["server"] =~ /^cache-([a-z]{3})\d+$/
+                         Regexp.last_match(1).upcase
+                       elsif pop["server"] =~ /^cache-([a-z]{3})-[a-z]{4}\d+$/
+                         Regexp.last_match(1).upcase
+                       else
+                         "???"
+                       end
+
           pop["response"]["headers"].each do |name, value|
             if name =~ /^x-hcstatus-(\S+)$/
               metrics["fastly_healthcheck_status"] << {
                 :host => host,
                 :pop => pop["pop"],
+                :datacenter => datacenter,
                 :backend => Regexp.last_match(1),
                 :sample => value.to_i
               }
