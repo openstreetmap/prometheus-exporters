@@ -7,8 +7,16 @@ require "uri"
 require "webrick"
 
 METRICS = {
+  "statuscake_up" => {
+    :help => "Whether a StatusCake test is up",
+    :type => "gauge"
+  },
+  "statuscake_paused" => {
+    :help => "Whether a StatusCake test is paused",
+    :type => "gauge"
+  },
   "statuscake_uptime" => {
-    :help => "Percentage uptime recorded by StatusCake",
+    :help => "Percentage uptime recorded by a StatusCake test",
     :type => "gauge"
   }
 }
@@ -53,11 +61,21 @@ server.mount_proc "/metrics" do |_request, response|
         uptime = JSON.parse(uptime.body)
 
         uptime["data"].each do |check|
+          metrics["statuscake_up"] << {
+            :id => check["id"],
+            :name => check["name"],
+            :sample => check["status"] == "up" ? 1 : 0
+          }
+
+          metrics["statuscake_paused"] << {
+            :id => check["id"],
+            :name => check["name"],
+            :sample => check["paused"] ? 1 : 0
+          }
+
           metrics["statuscake_uptime"] << {
             :id => check["id"],
             :name => check["name"],
-            :paused => check["paused"],
-            :status => check["status"],
             :sample => check["uptime"]
           }
         end
