@@ -54,7 +54,7 @@ server.mount_proc "/metrics" do |_request, response|
   metrics = Hash[METRICS.map { |name, details| [name, []] }]
   
   while page <= pages
-    uri.query = URI.encode_www_form(:limit => 100, :page => page)
+    uri.query = URI.encode_www_form(:limit => 25, :page => page)
 
     Net::HTTP.get_response(uri, headers) do |uptime|
       if uptime.code == "200"
