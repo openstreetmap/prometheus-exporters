@@ -1,0 +1,97 @@
+#!/usr/bin/ruby
+
+require "getoptlong"
+require "sqlite3"
+require "uri"
+require "webrick"
+
+METRICS = {
+  "rasdaemon_mc_events_total" => {
+    :help => "Memory controller errors",
+    :type => "counter"
+  },
+  "rasdaemon_aer_events_total" => {
+    :help => "PCIe AER errors",
+    :type => "counter"
+  }
+}
+
+COUNT_MC_EVENTS = <<-SQL
+  SELECT mc, top_layer, middle_layer, lower_layer, err_type, SUM(err_count)
+  FROM mc_event
+  GROUP BY mc, top_layer, middle_layer, lower_layer, err_type
+SQL
+
+COUNT_AER_EVENTS = <<-SQL
+  SELECT err_type, COUNT(*)
+  FROM aer_event
+  GROUP BY err_type
+SQL
+
+bind_address = "0.0.0.0"
+port = "9797"
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+database = SQLite3::Database.new("/var/lib/rasdaemon/ras-mc_event.db")
+
+server.mount_proc "/metrics" do |_request, response|
+  response.body = ""
+
+  metrics = Hash[METRICS.map { |name, details| [name, []] }]
+
+  database.execute(COUNT_MC_EVENTS).each do |record|
+    metrics["rasdaemon_mc_events_total"] << {
+      :mc => record[0],
+      :top => record[1],
+      :middle => record[2],
+      :lower => record[3],
+      :type => record[4].downcase,
+      :sample => record[5].to_i
+    }
+  end
+
+  database.execute(COUNT_AER_EVENTS).each do |record|
+    metrics["rasdaemon_mc_events_total"] << {
+      :type => record[0].downcase,
+      :sample => record[1].to_i
+    }
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      if labels.empty?
+        response.body << "#{name} #{sample}\n"
+      else
+        response.body << "#{name}{#{labels}} #{sample}\n"
+      end
+    end
+  end
+end
+
+server.start
