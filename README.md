@@ -20,7 +20,7 @@ https://github.com/fastly/fastly-exporter
 
 ### filestat Exporter for Prometheus
 
-github.com/michael-doubez/filestat_exporter
+https://github.com/michael-doubez/filestat_exporter
 
 ### ipmi Exporter for Prometheus
 
@@ -76,7 +76,7 @@ https://github.com/boynux/squid-exporter/
 
 ### ssl Exporter for Prometheus
 
-github.com/ribbybibby/ssl_exporter/
+https://github.com/ribbybibby/ssl_exporter/
 
 ### statuscake Exporter for Prometheus
 
