@@ -13,6 +13,11 @@ METRICS = {
   }
 }
 
+SERVICES = {
+  "OSM Tiles CDN" => "tile.openstreetmap.org",
+  "OSM Community CDN" => "community-cdn.openstreetmap.org"
+}
+
 bind_address = "0.0.0.0"
 port = "9696"
 fastly_api_token = ENV["FASTLY_API_TOKEN"]
@@ -42,7 +47,7 @@ server.mount_proc "/metrics" do |_request, response|
   headers = { "Fastly-Key" => fastly_api_token }
   metrics = Hash[METRICS.map { |name, details| [name, []] }]
 
-  %w[tile.openstreetmap.org].each do |host|
+  SERVICES.each do |service, host|
     uri = URI("https://api.fastly.com/content/edge_check?url=https://#{host}/fastly/api/hc-status")
 
     Net::HTTP.get_response(uri, headers) do |healthcheck|
@@ -61,7 +66,7 @@ server.mount_proc "/metrics" do |_request, response|
           pop["response"]["headers"].each do |name, value|
             if name =~ /^x-hcstatus-(\S+)$/
               metrics["fastly_healthcheck_status"] << {
-                :host => host,
+                :service => service,
                 :pop => pop["pop"],
                 :datacenter => datacenter,
                 :backend => Regexp.last_match(1),
