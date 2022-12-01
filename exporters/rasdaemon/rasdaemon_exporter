@@ -50,7 +50,7 @@ server = WEBrick::HTTPServer.new(
   :Port => port
 )
 
-database = SQLite3::Database.new("/var/lib/rasdaemon/ras-mc_event.db")
+database = SQLite3::Database.new("/var/lib/rasdaemon/ras-mc_event.db", :readonly => true)
 
 server.mount_proc "/metrics" do |_request, response|
   response.body = ""
