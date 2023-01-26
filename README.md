@@ -5,6 +5,7 @@ Prometheus exporters used on OpenStreetMap servers, stored here for ease of depl
 | Exporter | Upstream Repository |
 | --- | --- |
 | apache | https://github.com/Lusitaniae/apache_exporter |
+| elasticsearch | https://github.com/prometheus-community/elasticsearch_exporter/ |
 | exim | https://github.com/gvengel/exim_exporter |
 | fail2ban | N/A |
 | fastly | https://github.com/fastly/fastly-exporter |
