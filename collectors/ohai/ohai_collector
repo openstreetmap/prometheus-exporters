@@ -3,12 +3,24 @@
 require "json"
 require "ohai"
 
+controllers = []
 arrays = []
 disks = []
 
 ohai = Ohai::System.new(:directory => "/etc/chef/ohai")
 
 ohai = ohai.all_plugins(["hardware"])
+
+ohai[:hardware][:disk][:controllers].each do |controller|
+  controllers << {
+    :id => controller[:id],
+    :pci_slot => controller[:pci_slot],
+    :type => controller[:type],
+    :model => controller[:model],
+    :serial_number => controller[:serial_number],
+    :battery_status => controller[:battery_status]
+  }
+end
 
 ohai[:hardware][:disk][:arrays].each do |array|
   arrays << {
@@ -65,6 +77,15 @@ ohai[:hardware][:disk][:disks].each do |disk|
 
     disks << disk
   end
+end
+
+puts "# HELP ohai_controller_info Disk controller information"
+puts "# TYPE ohai_controller_info gauge"
+
+controllers.each do |controller|
+  labels = controller.filter { |key, value| !value.nil? }.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+
+  puts "ohai_controller_info{#{labels}} 1"
 end
 
 puts "# HELP ohai_array_info Disk array information"
