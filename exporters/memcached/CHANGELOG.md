@@ -1,3 +1,31 @@
+## 0.13.0 / 2023-06-02
+
+* [FEATURE] Multi-target scrape support #143, #173
+
+## 0.12.0 / 2023-06-02
+
+* [ENHANCEMENT] Add `memcached_extstore_io_queue_depth` #169
+* [BUGFIX] Fix exposing `memcached_extstore_pages_free` #169
+
+## 0.11.3 / 2023-04-12
+
+* [ENHANCEMENT] Better error messaging when TLS server name is required #162
+* [CHANGE] Update dependencies & build with Go 1.20 to avoid upstream CVEs #166
+
+## 0.11.2 / 2023-03-08
+
+* [BUGFIX] Fix connections via UNIX domain socket #157
+* [CHANGE] Update dependencies, including exporter toolkit #161
+
+## 0.11.1 / 2023-02-13
+
+* [FEATURE] Add metric to indicate if memcached is accepting connections #137
+* [FEATURE] Support TLS for connection to memcached #153
+* [FEATURE] Support systemd socket activation #147
+* [ENHANCEMENT] Miscellaneous dependency updates #151 #147 #146 #140
+
+Release 0.11.0 failed due to CI issues.
+
 ## 0.10.0 / 2022-06-21
 
 * [FEATURE] Add rusage and rejected_connection metrics #109
