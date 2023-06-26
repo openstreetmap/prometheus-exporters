@@ -28,6 +28,5 @@ Prometheus exporters used on OpenStreetMap servers, stored here for ease of depl
 | renderd | N/A |
 | smokeping | https://github.com/SuperQ/smokeping_prober |
 | snmp | https://github.com/prometheus/snmp_exporter |
-| squid | https://github.com/boynux/squid-exporter |
 | ssl | https://github.com/ribbybibby/ssl_exporter |
 | statuscake | N/A |
