@@ -1,0 +1,27 @@
+name: Updater
+
+on:
+  schedule:
+  - cron: 33 3 * * 0
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  updater:
+    name: Updater
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+    - name: Setup ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ruby
+        bundler-cache: true
+    - name: Run updater
+      run: bundle exec ruby bin/updater
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+---
+repository: prometheus-community/elasticsearch_exporter
+version: 1.5.0
+files:
+- CHANGELOG.md
+- LICENSE
+- README.md
+- examples/grafana/dashboard.json
+- examples/kubernetes/deployment.json
+- examples/prometheus/elasticsearch.rules

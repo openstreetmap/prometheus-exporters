@@ -1,0 +1,5 @@
+---
+repository: prometheus-community/ipmi_exporter
+version: 1.6.1
+files:
+- LICENSE

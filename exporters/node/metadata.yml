@@ -1,0 +1,6 @@
+---
+repository: prometheus/node_exporter
+version: 1.6.0
+files:
+- LICENSE
+- NOTICE
