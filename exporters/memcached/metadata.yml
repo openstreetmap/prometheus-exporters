@@ -1,0 +1,8 @@
+---
+repository: prometheus/memcached_exporter
+version: 0.13.0
+files:
+- CHANGELOG.md
+- LICENSE
+- NOTICE
+- README.md

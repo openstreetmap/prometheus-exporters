@@ -1,0 +1,5 @@
+---
+repository: Lusitaniae/apache_exporter
+version: 0.13.4
+files:
+- LICENSE

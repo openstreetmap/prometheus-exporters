@@ -1,0 +1,6 @@
+---
+repository: Intellection/passenger-exporter
+version: 1.0.0
+setup: go install github.com/prometheus/promu@latest
+build: promu build
+executable: passenger-exporter

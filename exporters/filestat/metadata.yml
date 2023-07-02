@@ -1,0 +1,7 @@
+---
+repository: michael-doubez/filestat_exporter
+version: 0.3.6
+files:
+- LICENSE
+- NOTICE
+- filestat.yml

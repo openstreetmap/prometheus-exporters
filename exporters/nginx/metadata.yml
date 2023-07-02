@@ -1,0 +1,9 @@
+---
+repository: nginxinc/nginx-prometheus-exporter
+version: 0.11.0
+build: make nginx-prometheus-exporter
+executable: nginx-prometheus-exporter
+files:
+- CHANGELOG.md
+- LICENSE
+- README.md
