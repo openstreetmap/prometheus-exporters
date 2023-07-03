@@ -15,16 +15,20 @@ client = Octokit::Client.new(:bearer_token => ENV["GITHUB_TOKEN"])
 
 client.auto_paginate = true
 
-client.branches(ENV["GITHUB_REPOSITORY"]).each do |branch|
-  if branch.name =~ %r{^updater/}
-    pulls = client.commit_pulls(ENV["GITHUB_REPOSITORY"], branch.commit.sha)
+branches = client.branches(ENV["GITHUB_REPOSITORY"]).filter do |branch|
+  branch.name =~ %r{^updater/}
+end
 
-    if pulls.all? { |pull| pull.state == "closed" }
-      puts "Removing #{branch.name}..."
-
-      git.push("origin", branch.name, :delete => true)
-    end
+closed_branches, open_branches = branches.partition do |branch|
+  client.commit_pulls(ENV["GITHUB_REPOSITORY"], branch.commit.sha).all? do |pull|
+    pull.state == "closed"
   end
+end
+
+closed_branches.each do |branch|
+  puts "Removing #{branch.name}..."
+
+  git.push("origin", branch.name, :delete => true)
 end
 
 Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
@@ -39,7 +43,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
   if latest_version > current_version
     branch = "updater/#{name}-#{latest_version}"
 
-    next if git.is_branch?(branch)
+    next if open_branches.any? { |b| b.name == branch }
 
     print "Update #{name} to #{latest_version}\n"
 
