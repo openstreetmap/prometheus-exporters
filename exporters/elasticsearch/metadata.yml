@@ -6,5 +6,5 @@ files:
 - LICENSE
 - README.md
 - examples/grafana/dashboard.json
-- examples/kubernetes/deployment.json
+- examples/kubernetes/deployment.yml
 - examples/prometheus/elasticsearch.rules
