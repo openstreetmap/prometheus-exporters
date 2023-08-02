@@ -1,0 +1,8 @@
+---
+repository: czerwonk/junos_exporter
+version: 0.10.1
+setup: go install github.com/goreleaser/goreleaser@latest
+build: goreleaser build --clean --single-target --output=junos_exporter
+files:
+- LICENSE
+- README.md
