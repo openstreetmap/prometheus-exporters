@@ -67,7 +67,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
         "GOPATH" => tmpdir,
         "CGO_ENABLED" => "0",
         "PATH" => "#{ENV.fetch("PATH")}:#{tmpdir}/bin",
-        "VERSION" => latest_version
+        "VERSION" => latest_version.to_s
       )
 
       Git.clone(url, "#{tmpdir}/#{name}", :branch => latest_release[:tag_name], :depth => 1)
