@@ -12,6 +12,14 @@ We wanted to have an KIS and vendor specific exporter instead.
 This approach should allow us to scrape our metrics in a very time efficient way.
 For this reason this project was started.
 
+## Important notice for users of version < 0.10
+In version 0.10 the ``config.ignore-targets`` flag was removed. The same beahior can be achieved by using an match all host pattern:
+```
+devices:
+  - host: .*
+    host_pattern: true
+```
+
 ## Important notice for users of version < 0.7
 In version 0.7 a typo in the prefix of all BGP related metrics was fixed. Please update your queries accordingly.
 
@@ -23,6 +31,8 @@ Please have a look on the new SSH related parameters and update your service uni
 ## Features
 The following metrics are supported by now:
 * Interfaces (bytes transmitted/received, errors, drops, speed)
+* Interface L1/L2 details (FEC, MAC statistics)
+* L2 security (BPDU-block violations)
 * Routes (per table, by protocol)
 * Alarms (count)
 * BGP (message count, prefix counts per peer, session state)
@@ -35,9 +45,18 @@ The following metrics are supported by now:
 * Storage (total, available and used blocks, used percentage)
 * Firewall filters (counters and policers) - needs explicit rights beyond read-only
 * Security policy (SRX) statistics
-* Statistics about l2circuits (tunnel state, number of tunnels)
 * Interface queue statistics
 * Power (Power usage)
+* License statistics (installed/used/needed)
+* L2circuits (tunnel state, number of tunnels)
+* LDP (number of neighbors, sessions and session states)
+* VRRP (state per interface)
+
+
+## Feature specific mappings
+Some collected time series behave like enums - Integer values represent a certain state/meaning.
+
+### L2circuits
 ```   
 0:EI -- encapsulation invalid
 1:MM -- mtu mismatch
@@ -63,14 +82,14 @@ The following metrics are supported by now:
 21:RS -- remote site standby
 22:HS -- Hot-standby Connection
 ```
-* LDP (number of neighbors, sessions and session states)
-States map to human readable names like this:
+
+### LDP
 ```   
 0: "Nonexistant"
 1: "Operational"
 ```
-* RPKI Session Information
-States map to human readable names like this:
+
+### RPKI
 ```
 0 = "Down"
 1 = "Up"
@@ -79,7 +98,8 @@ States map to human readable names like this:
 4 = "Ex-Incr"
 5 = "Ex-Full"
 ```
-* VRRP (state per interface)
+
+### VRRP
 States map to human readable names like this:
 ```   
 1: "init"
@@ -87,9 +107,18 @@ States map to human readable names like this:
 3: "master"
 ```
 
+### License statistics
+Expiry is either presented as number of days until expiry date or certain special values.
+```
+0 ... n = Days until expiry
+     -1 = Expired 
+   +Inf = Permanent license
+   -Inf = Invalid
+```
+
 ## Install
 ```bash
-go get -u github.com/czerwonk/junos_exporter
+go get -u github.com/czerwonk/junos_exporter@master
 ```
 
 ## Usage
