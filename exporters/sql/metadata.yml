@@ -1,0 +1,8 @@
+---
+repository: burningalchemist/sql_exporter
+version: 0.12.3
+files:
+- LICENSE
+- README.md
+- mssql_standard.collector.yml
+- sql_exporter.yml
