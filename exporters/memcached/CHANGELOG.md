@@ -1,3 +1,18 @@
+## 0.14.1 / 2023-12-06
+
+* [CHANGE] Build with Go 1.21 #190
+* [BUGFIX] Add missing `_total` suffix for metrics for failure to store items #191
+
+## 0.14.0 / 2023-12-06
+
+* [FEATURE] Add metrics for failure to store items #184
+
+## 0.13.1 / 2023-12-06
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2023-3978 which is not exploitable in the exporter, but set off security scanners.
+
 ## 0.13.0 / 2023-06-02
 
 * [FEATURE] Multi-target scrape support #143, #173
