@@ -120,7 +120,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
           "main",
           branch,
           "Update #{name}_exporter to #{latest_version}",
-          "Update [#{name}_exporter](https://github.com/#{repository}) to [#{latest_version}](#{latest_release[:html_url]}).\n<blockquote>#{latest_release[:body]}</blockquote>"
+          "Update [#{name}_exporter](https://github.com/#{repository}) to [#{latest_version}](#{latest_release[:html_url]}).\n<blockquote>\n\n#{latest_release[:body]}</blockquote>"
         )
       rescue Exception => ex
         puts ex.full_message
