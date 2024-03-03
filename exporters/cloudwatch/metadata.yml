@@ -1,4 +1,4 @@
 ---
 repository: nerdswords/yet-another-cloudwatch-exporter
-version: 0.54.1
+version: 0.57.0
 executable: yace
