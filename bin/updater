@@ -63,7 +63,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
     git.rm("#{dir}/#{name}_exporter") if File.exist?("#{dir}/#{name}_exporter")
 
     Dir.mktmpdir("prometheus") do |tmpdir|
-      env.merge!(
+      env = env.merge(
         "GOPATH" => tmpdir,
         "CGO_ENABLED" => "0",
         "PATH" => "#{ENV.fetch("PATH")}:#{tmpdir}/bin",
