@@ -3,6 +3,10 @@
 require "json"
 require "ohai"
 
+def escape_value(v)
+  v.to_s.gsub(/(["\\])/, "\\\\\\1")
+end
+
 controllers = []
 arrays = []
 disks = []
@@ -83,7 +87,7 @@ puts "# HELP ohai_controller_info Disk controller information"
 puts "# TYPE ohai_controller_info gauge"
 
 controllers.each do |controller|
-  labels = controller.filter { |key, value| !value.nil? }.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+  labels = controller.filter { |key, value| !value.nil? }.collect { |key, value| "#{key}=\"#{escape_value(value)}\"" }.join(",")
 
   puts "ohai_controller_info{#{labels}} 1"
 end
@@ -92,7 +96,7 @@ puts "# HELP ohai_array_info Disk array information"
 puts "# TYPE ohai_array_info gauge"
 
 arrays.each do |array|
-  labels = array.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+  labels = array.collect { |key, value| "#{key}=\"#{escape_value(value)}\"" }.join(",")
 
   puts "ohai_array_info{#{labels}} 1"
 end
@@ -101,7 +105,7 @@ puts "# HELP ohai_disk_info Disk information"
 puts "# TYPE ohai_disk_info gauge"
 
 disks.each do |disk|
-  labels = disk.collect { |key, value| "#{key}=\"#{value}\"" }.join(",")
+  labels = disk.collect { |key, value| "#{key}=\"#{escape_value(value)}\"" }.join(",")
 
   puts "ohai_disk_info{#{labels}} 1"
 end
