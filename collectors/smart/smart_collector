@@ -39,9 +39,9 @@ IO.read("/etc/prometheus/collectors/smart.devices").split("\n") do |line|
   }
 
   if data[:protocol] == "SCSI"
-    data[:vendor] = output["vendor"]
-    data[:product] = output["product"]
-    data[:firmware_version] = output["revision"]
+    data[:vendor] = output["scsi_vendor"] || output["vendor"]
+    data[:product] = output["scsi_product"] || output["product"]
+    data[:firmware_version] = output["scsi_revision"] || output["revision"]
   elsif output["model_name"] =~ / /
     data[:vendor], data[:product] = output["model_name"].split
     data[:firmware_version] = output["firmware_version"]
