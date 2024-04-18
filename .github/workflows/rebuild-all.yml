@@ -1,0 +1,27 @@
+name: Rebuild-All
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  updater:
+    name: Rebuid-All
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Setup ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ruby
+        bundler-cache: true
+    - name: Install binutils-aarch64-linux-gnu
+      run: sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu
+    - name: Run rebuild-all
+      run: bundle exec ruby bin/rebuild-all
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

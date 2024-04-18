@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+require "git"
+require "octokit"
+require "yaml"
+
+gitdir = Dir.pwd
+
+git = Git.open(gitdir)
+
+git.config("user.name", "Prometheus Updater")
+git.config("user.email", "admins@openstreetmap.org")
+
+client = Octokit::Client.new(:bearer_token => ENV["GITHUB_TOKEN"])
+
+client.auto_paginate = true
+
+branches = client.branches(ENV["GITHUB_REPOSITORY"]).filter do |branch|
+  branch.name =~ %r{^updater/}
+end
+
+closed_branches, open_branches = branches.partition do |branch|
+  client.commit_pulls(ENV["GITHUB_REPOSITORY"], branch.commit.sha).all? do |pull|
+    pull.state == "closed"
+  end
+end
+
+closed_branches.each do |branch|
+  puts "Removing #{branch.name}..."
+
+  git.push("origin", branch.name, :delete => true)
+end
+
+Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
+  name = File.basename(File.dirname(metadatafile))
+  metadata = YAML.safe_load_file(metadatafile)
+
+  latest_release = client.latest_release(metadata["repository"])
+
+  latest_version = Gem::Version.new(latest_release[:tag_name].sub(/^v/, ""))
+  current_version = Gem::Version.new(metadata["version"])
+
+  # if latest_version > current_version
+  if true
+    branch = "updater/#{name}-#{latest_version}"
+
+    next if open_branches.any? { |b| b.name == branch }
+
+    print "Update #{name} to #{latest_version}\n"
+
+    repository = metadata["repository"]
+    setup = metadata["setup"]
+    build = metadata["build"] || "make build"
+    arch = metadata["arch"] || "GOARCH"
+    env = metadata["env"] || {}
+    executable = metadata["executable"] || "#{name}_exporter"
+    files = metadata["files"] || []
+
+    url = "https://github.com/#{repository}.git"
+    dir = "#{gitdir}/exporters/#{name}"
+
+    git.checkout(branch, :start_point => "main", :new_branch => true)
+
+    git.rm("#{dir}/#{name}_exporter") if File.exist?("#{dir}/#{name}_exporter")
+
+    Dir.mktmpdir("prometheus") do |tmpdir|
+      env = env.merge(
+        "GOPATH" => tmpdir,
+        "CGO_ENABLED" => "0",
+        "PATH" => "#{ENV.fetch("PATH")}:#{tmpdir}/bin",
+        "VERSION" => latest_version.to_s
+      )
+
+      Git.clone(url, "#{tmpdir}/#{name}", :branch => latest_release[:tag_name], :depth => 1)
+
+      Dir.chdir("#{tmpdir}/#{name}") do
+        puts "Setup..."
+
+        system(env, setup, :exception => true) if setup
+
+        puts "Build for amd64..."
+
+        system(env.merge(arch => "amd64"), build, :exception => true)
+        FileUtils.mv(executable, "#{dir}/#{name}_exporter_x86_64")
+        system("strip", "--strip-all", "#{dir}/#{name}_exporter_x86_64")
+        git.add("#{dir}/#{name}_exporter_x86_64")
+
+        puts "Build for arm64..."
+
+        system(env.merge(arch => "arm64"), build, :exception => true)
+        FileUtils.mv(executable, "#{dir}/#{name}_exporter_aarch64")
+        system("aarch64-linux-gnu-strip", "--strip-all", "#{dir}/#{name}_exporter_aarch64")
+        git.add("#{dir}/#{name}_exporter_aarch64")
+
+        puts "Update auxilliary files..."
+
+        files.each do |file|
+          leafname = File.basename(file)
+
+          FileUtils.cp(file, "#{dir}/#{leafname}")
+          git.add("#{dir}/#{leafname}")
+        end
+
+        puts "Update metadata..."
+
+        metadata["version"] = latest_version.to_s
+
+        IO.write(metadatafile, YAML.safe_dump(metadata))
+        git.add(metadatafile)
+
+        puts "Commit changes to #{branch}..."
+
+        git.commit("Update #{name}_exporter to #{latest_version}")
+
+        puts "Push branch #{branch}..."
+
+        git.push("origin", branch)
+
+        puts "Create pull request for #{branch}..."
+
+        body = latest_release[:body].gsub(/@([a-z0-9-]+)/i, "<a href='https://github/\\1'><code>@\\1</code></a>")
+
+        client.create_pull_request(
+          ENV["GITHUB_REPOSITORY"],
+          "main",
+          branch,
+          "Update #{name}_exporter to #{latest_version}",
+          "Update [#{name}_exporter](https://github.com/#{repository}) to [#{latest_version}](#{latest_release[:html_url]}).\n<blockquote>\n\n#{body}</blockquote>"
+        )
+      rescue Exception => ex
+        puts ex.full_message
+        git.reset_hard
+      end
+    ensure
+      FileUtils.chmod_R("u+w", tmpdir)
+    end
+
+    git.checkout("main")
+  end
+end
