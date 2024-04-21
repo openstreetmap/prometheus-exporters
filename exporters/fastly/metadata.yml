@@ -1,5 +1,5 @@
 ---
 repository: fastly/fastly-exporter
-version: 7.6.1
+version: 8.0.0
 build: make fastly-exporter
 executable: fastly-exporter
