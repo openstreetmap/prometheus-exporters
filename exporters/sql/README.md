@@ -1,7 +1,5 @@
-# Prometheus SQL Exporter [![Go](https://github.com/burningalchemist/sql_exporter/workflows/Go/badge.svg)](https://github.com/burningalchemist/sql_exporter/actions?query=workflow%3AGo) [![Go Report Card](https://goreportcard.com/badge/github.com/burningalchemist/sql_exporter)](https://goreportcard.com/report/github.com/burningalchemist/sql_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/burningalchemist/sql_exporter)](https://hub.docker.com/r/burningalchemist/sql_exporter) ![Downloads](https://img.shields.io/github/downloads/burningalchemist/sql_exporter/total)
-
-This is a permanent fork of Database agnostic SQL exporter for [Prometheus](https://prometheus.io) created by
-[@free](https://github.com/free/sql_exporter).
+# SQL Exporter for Prometheus
+[![Go](https://github.com/burningalchemist/sql_exporter/workflows/Go/badge.svg)](https://github.com/burningalchemist/sql_exporter/actions?query=workflow%3AGo) [![Go Report Card](https://goreportcard.com/badge/github.com/burningalchemist/sql_exporter)](https://goreportcard.com/report/github.com/burningalchemist/sql_exporter) [![Docker Pulls](https://img.shields.io/docker/pulls/burningalchemist/sql_exporter)](https://hub.docker.com/r/burningalchemist/sql_exporter) ![Downloads](https://img.shields.io/github/downloads/burningalchemist/sql_exporter/total) [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/sql-exporter)](https://artifacthub.io/packages/helm/sql-exporter/sql-exporter)
 
 ## Overview
 
@@ -136,6 +134,9 @@ global:
 
 # The target to monitor and the list of collectors to execute on it.
 target:
+  # Target name (optional). Setting this field enables extra metrics e.g. `up` and `scrape_duration` with
+  # the `target` label that are always returned on a scrape.
+  name: "prices_db"
   # Data source name always has a URI schema that matches the driver name. In some cases (e.g. MySQL)
   # the schema gets dropped or replaced to match the driver expected DSN format.
   data_source_name: 'sqlserver://prom_user:prom_password@dbserver1.example.com:1433'
@@ -143,6 +144,10 @@ target:
   # Collectors (referenced by name) to execute on the target.
   # Glob patterns are supported (see <https://pkg.go.dev/path/filepath#Match> for syntax).
   collectors: [pricing_data_freshness, pricing_*]
+
+  # In case you need to connect to a backend that only responds to a limited set of commands (e.g. pgbouncer) or
+  # a data warehouse you don't want to keep online all the time (due to the extra cost), you might want to disable `ping`
+  # enable_ping: true
 
 # Collector definition files.
 # Glob patterns are supported (see <https://pkg.go.dev/path/filepath#Match> for syntax).
@@ -178,6 +183,12 @@ metrics:
       # Arbitrary key/value pair
       portfolio: income
     values: [LastUpdateTime]
+    # Static metric value (optional). Useful in case we are interested in string data (key_labels) only. It's mutually
+    # exclusive with `values` field.
+    # static_value: 1
+    # Timestamp value (optional). Should point at the existing column containing valid timestamps to return a metric
+    # with an explicit timestamp.
+    # timestamp_value: CreatedAt
     query: |
       SELECT Market, max(UpdateTime) AS LastUpdateTime
       FROM MarketPrices
@@ -258,15 +269,32 @@ configure `jobs` list instead of the `target` section as in the following exampl
 jobs:
   - job_name: db_targets
     collectors: [pricing_data_freshness, pricing_*]
+    enable_ping: true # Optional, true by default. Set to `false` in case you connect to pgbouncer or a data warehouse
     static_configs:
-        - targets:
-            pg1: 'pg://db1@127.0.0.1:25432/postgres?sslmode=disable'
-            pg2: 'pg://db2@127.0.0.1:25432/testdb?sslmode=disable'
+      - targets:
+          pg1: 'pg://db1@127.0.0.1:25432/postgres?sslmode=disable'
+          pg2: 'postgresql://username:password@pg-host.example.com:5432/dbname?sslmode=disable'
+      - labels:  # Optional, arbitrary key/value pair for all targets
+          cluster: cluster1
 ```
 
 , where DSN strings are assigned to the arbitrary instance names (i.e. pg1 and pg2).
 
 We can also define multiple jobs to run different collectors against different target sets.
+
+Since v0.14, sql_exporter can be passed an optional list of job names to filter out metrics. The `jobs[]` query
+parameter may be used multiple times. In Prometheus configuration we can use this syntax under the [scrape
+config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cscrape_config%3E):
+
+```yaml
+  params:
+    jobs[]:
+      - db_targets1
+      - db_targets2
+```
+
+This might be useful for scraping targets with different intervals or any other advanced use cases, when calling all
+jobs at once is undesired.
 
 ### TLS and Basic Authentication
 
@@ -296,3 +324,8 @@ philosophical issue, but practical issues are not all that difficult to imagine:
 
 The control they provide over which labels get applied is limited, and the base label set spammy. And finally,
 configurations are not easily reused without copy-pasting and editing across jobs and instances.
+
+## Credits
+
+This is a permanent fork of Database agnostic SQL exporter for [Prometheus](https://prometheus.io) created by
+[@free](https://github.com/free/sql_exporter).
