@@ -117,7 +117,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
 
         puts "Create pull request for #{branch}..."
 
-        body = latest_release[:body].gsub(/@([a-z0-9-]+)/i, "<a href='https://github/\\1'><code>@\\1</code></a>")
+        body = latest_release[:body].gsub(/@([a-z0-9-]+)/i, "<a href='https://github.com/\\1'><code>@\\1</code></a>")
 
         client.create_pull_request(
           ENV["GITHUB_REPOSITORY"],
