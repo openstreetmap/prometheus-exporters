@@ -82,6 +82,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
         system(env.merge(arch => "amd64"), build, :exception => true)
         FileUtils.mv(executable, "#{dir}/#{name}_exporter_x86_64")
         system("strip", "--strip-all", "#{dir}/#{name}_exporter_x86_64")
+        system("upx", "--best", "#{dir}/#{name}_exporter_x86_64")
         git.add("#{dir}/#{name}_exporter_x86_64")
 
         puts "Build for arm64..."
@@ -89,6 +90,7 @@ Dir.glob("#{gitdir}/exporters/*/metadata.yml").each do |metadatafile|
         system(env.merge(arch => "arm64"), build, :exception => true)
         FileUtils.mv(executable, "#{dir}/#{name}_exporter_aarch64")
         system("aarch64-linux-gnu-strip", "--strip-all", "#{dir}/#{name}_exporter_aarch64")
+        system("upx", "--best", "#{dir}/#{name}_exporter_aarch64")
         git.add("#{dir}/#{name}_exporter_aarch64")
 
         puts "Update auxilliary files..."
