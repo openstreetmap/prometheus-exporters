@@ -22,7 +22,7 @@ GEM
       faraday-net_http (>= 2.0, < 3.2)
     faraday-net_http (3.1.0)
       net-http
-    git (2.1.0)
+    git (2.1.1)
       activesupport (>= 5.0)
       addressable (~> 2.8)
       process_executer (~> 1.1)
@@ -51,7 +51,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  git (~> 2.1.0)
+  git (~> 2.1.1)
   octokit (~> 8.1.0)
 
 BUNDLED WITH
