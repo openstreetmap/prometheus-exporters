@@ -1,6 +1,6 @@
 ---
 repository: czerwonk/junos_exporter
-version: 0.12.2
+version: 0.12.3
 setup: go install github.com/goreleaser/goreleaser@latest
 build: goreleaser build --clean --single-target --output=junos_exporter
 files:
