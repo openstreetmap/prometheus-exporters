@@ -1,6 +1,6 @@
 ---
 repository: gvengel/exim_exporter
-version: 1.6.1
+version: 1.6.2
 arch: ARCH
 env:
   TAGS: dummy
