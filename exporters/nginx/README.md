@@ -18,15 +18,70 @@
 
 NGINX Prometheus exporter makes it possible to monitor NGINX or NGINX Plus using Prometheus.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## Table of Contents
+
+- [Overview](#overview)
+- [Getting Started](#getting-started)
+  - [A Note about NGINX Ingress Controller](#a-note-about-nginx-ingress-controller)
+  - [Prerequisites](#prerequisites)
+  - [Running the Exporter in a Docker Container](#running-the-exporter-in-a-docker-container)
+  - [Running the Exporter Binary](#running-the-exporter-binary)
+- [Usage](#usage)
+  - [Command-line Arguments](#command-line-arguments)
+- [Exported Metrics](#exported-metrics)
+  - [Common metrics](#common-metrics)
+  - [Metrics for NGINX OSS](#metrics-for-nginx-oss)
+    - [Stub status metrics](#stub-status-metrics)
+  - [Metrics for NGINX Plus](#metrics-for-nginx-plus)
+    - [Connections](#connections)
+    - [HTTP](#http)
+    - [SSL](#ssl)
+    - [HTTP Server Zones](#http-server-zones)
+    - [Stream Server Zones](#stream-server-zones)
+    - [HTTP Upstreams](#http-upstreams)
+    - [Stream Upstreams](#stream-upstreams)
+    - [Stream Zone Sync](#stream-zone-sync)
+    - [Location Zones](#location-zones)
+    - [Resolver](#resolver)
+    - [HTTP Requests Rate Limiting](#http-requests-rate-limiting)
+    - [HTTP Connections Limiting](#http-connections-limiting)
+    - [Stream Connections Limiting](#stream-connections-limiting)
+    - [Cache](#cache)
+    - [Worker](#worker)
+- [Troubleshooting](#troubleshooting)
+- [Releases](#releases)
+  - [Docker images](#docker-images)
+  - [Binaries](#binaries)
+  - [Homebrew](#homebrew)
+  - [Snap](#snap)
+  - [Scoop](#scoop)
+  - [Nix](#nix)
+- [Building the Exporter](#building-the-exporter)
+  - [Building the Docker Image](#building-the-docker-image)
+  - [Building the Binary](#building-the-binary)
+- [Grafana Dashboard](#grafana-dashboard)
+- [SBOM (Software Bill of Materials)](#sbom-software-bill-of-materials)
+  - [Binaries](#binaries-1)
+  - [Docker Image](#docker-image)
+- [Provenance](#provenance)
+- [Contacts](#contacts)
+- [Contributing](#contributing)
+- [Support](#support)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Overview
 
 [NGINX](https://nginx.org) exposes a handful of metrics via the [stub_status
 page](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status). [NGINX
 Plus](https://www.nginx.com/products/nginx/) provides a richer set of metrics via the
 [API](https://nginx.org/en/docs/http/ngx_http_api_module.html) and the [monitoring
-dashboard](https://www.nginx.com/products/nginx/live-activity-monitoring/). NGINX Prometheus exporter fetches the
-metrics from a single NGINX or NGINX Plus, converts the metrics into appropriate Prometheus metrics types and finally
-exposes them via an HTTP server to be collected by [Prometheus](https://prometheus.io/).
+dashboard](https://docs.nginx.com/nginx/admin-guide/monitoring/live-activity-monitoring/). NGINX Prometheus exporter
+fetches the metrics from a single NGINX or NGINX Plus, converts the metrics into appropriate Prometheus metrics types
+and finally exposes them via an HTTP server to be collected by [Prometheus](https://prometheus.io/).
 
 ## Getting Started
 
@@ -58,7 +113,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.1.0 --nginx.scrape-uri=http://<nginx>:8080/stub_status
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.3.0 --nginx.scrape-uri=http://<nginx>:8080/stub_status
   ```
 
   where `<nginx>` is the IP address/DNS name, through which NGINX is available.
@@ -66,7 +121,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX Plus metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.1.0 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.3.0 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
   ```
 
   where `<nginx-plus>` is the IP address/DNS name, through which NGINX Plus is available.
@@ -247,7 +302,7 @@ Flags:
 | `nginxplus_upstream_server_ssl_handshakes`          | Counter | Successful SSL handshakes                                                                                                                                      | `server`, `upstream`                                                                                                                              |
 | `nginxplus_upstream_server_ssl_handshakes_failed`   | Counter | Failed SSL handshakes                                                                                                                                          | `server`, `upstream`                                                                                                                              |
 | `nginxplus_upstream_server_ssl_session_reuses`      | Counter | Session reuses during SSL handshake                                                                                                                            | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_keepalives`                     | Gauge   | Idle keepalive connections                                                                                                                                     | `upstream`                                                                                                                                        |
+| `nginxplus_upstream_keepalive`                      | Gauge   | Idle keepalive connections                                                                                                                                     | `upstream`                                                                                                                                        |
 | `nginxplus_upstream_zombies`                        | Gauge   | Servers removed from the group but still processing active client requests                                                                                     | `upstream`                                                                                                                                        |
 
 #### [Stream Upstreams](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_stream_upstream)
@@ -341,7 +396,7 @@ Flags:
 | `nginxplus_stream_limit_connection_rejected`         | Counter | Total number of connections that were rejected                                 | `zone` |
 | `nginxplus_stream_limit_connection_rejected_dry_run` | Counter | Total number of connections accounted as rejected in the dry run mode          | `zone` |
 
-#### [Cache](https://nginx.org/en/docs/http/ngx_http_api_module.html#http_caches_http_cache_zone_name)
+#### [Cache](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_http_cache)
 
 | Name                                        | Type    | Description                                                             | Labels  |
 | ------------------------------------------- | ------- | ----------------------------------------------------------------------- | ------- |
@@ -367,16 +422,16 @@ Flags:
 | `nginxplus_cache_bypass_responses_written`  | Counter | Total number of cache bypasses written to cache                         | `cache` |
 | `nginxplus_cache_bypass_bytes_written`      | Counter | Total number of bytes written to cache from cache bypasses              | `cache` |
 
-#### [Worker](hhttps://nginx.org/en/docs/http/ngx_http_api_module.html#workers)
+#### [Worker](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_worker)
 
-| Name                                     | Type    | Description                                                                                    | Labels      |
-| ---------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- | ----------- |
-| `nginxplus_worker_connection_accepted`   | Counter | The total number of accepted client connections                                                | `id`, `pid` |
-| `nginxplus_worker_connection_dropped`    | Counter | The total number of accepted client connections                                                | `id`, `pid` |
-| `nginxplus_worker_connection_active`     | Gauge   | The current number of active client connections                                                | `id`, `pid` |
-| `nginxplus_worker_connection_idle`       | Gauge   | The current number of idle client connection                                                   | `id`, `pid` |
-| `nginxplus_worker_http_requests_total`   | Counter | The total number of client requests received by the worker process                             | `id`, `pid` |
-| `nginxplus_worker_http_requests_current` | Gauge   | The current number of client requests that are currently being processed by the worker process | `id`, `pid` |
+| Name                                     | Type    | Description                                                              | Labels      |
+| ---------------------------------------- | ------- | ------------------------------------------------------------------------ | ----------- |
+| `nginxplus_worker_connection_accepted`   | Counter | The total number of accepted client connections                          | `id`, `pid` |
+| `nginxplus_worker_connection_dropped`    | Counter | The total number of dropped client connections                           | `id`, `pid` |
+| `nginxplus_worker_connection_active`     | Gauge   | The current number of active client connections                          | `id`, `pid` |
+| `nginxplus_worker_connection_idle`       | Gauge   | The current number of idle client connection                             | `id`, `pid` |
+| `nginxplus_worker_http_requests_total`   | Counter | The total number of client requests received                             | `id`, `pid` |
+| `nginxplus_worker_http_requests_current` | Gauge   | The current number of client requests that are currently being processed | `id`, `pid` |
 
 Connect to the `/metrics` page of the running exporter to see the complete list of metrics along with their
 descriptions. Note: to see server zones related metrics you must configure [status
@@ -425,6 +480,36 @@ You can install the NGINX Prometheus Exporter from the [Snap Store](https://snap
 
 ```console
 snap install nginx-prometheus-exporter
+```
+
+### Scoop
+
+You can add the NGINX Scoop bucket with
+
+```console
+scoop bucket add nginx https://github.com/nginxinc/scoop-bucket.git
+```
+
+and then install the package with
+
+```console
+scoop install nginx-prometheus-exporter
+```
+
+### Nix
+
+First include NUR in your packageOverrides as explained in the [NUR documentation](https://github.com/nix-community/NUR#installation).
+
+Then you can use the exporter with the following command:
+
+```console
+nix-shell --packages nur.repos.nginx.nginx-prometheus-exporter
+```
+
+or install it with:
+
+```console
+nix-env -f '<nixpkgs>' -iA nur.repos.nginx.nginx-prometheus-exporter
 ```
 
 ## Building the Exporter
