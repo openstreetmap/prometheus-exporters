@@ -23,14 +23,14 @@ GEM
       faraday-net_http (>= 2.0, < 3.2)
     faraday-net_http (3.1.0)
       net-http
-    git (2.2.0)
+    git (2.3.0)
       activesupport (>= 5.0)
       addressable (~> 2.8)
       process_executer (~> 1.1)
       rchardet (~> 1.8)
     i18n (1.14.5)
       concurrent-ruby (~> 1.0)
-    logger (1.6.0)
+    logger (1.6.1)
     minitest (5.25.1)
     net-http (0.4.1)
       uri
@@ -52,7 +52,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  git (~> 2.2.0)
+  git (~> 2.3.0)
   octokit (~> 9.1.0)
 
 BUNDLED WITH
