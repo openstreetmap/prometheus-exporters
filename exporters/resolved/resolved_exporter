@@ -2,7 +2,6 @@
 
 require "dbus/systemd"
 require "getoptlong"
-require "pg"
 require "webrick"
 
 bind_address = "0.0.0.0"
