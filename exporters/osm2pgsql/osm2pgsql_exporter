@@ -36,7 +36,7 @@ server.mount_proc "/metrics" do |_request, response|
   response.body = ""
 
   begin
-    replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from importdate) FROM planet_osm_replication_status").values.first.first.to_f
+    replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from value::timestamptz) FROM osm2pgsql_properties WHERE property = 'replication_timestamp'").values.first.first.to_f
   rescue PG::UnableToSend
     conn.reset
     retry
