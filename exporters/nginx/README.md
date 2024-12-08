@@ -1,5 +1,5 @@
 <!-- markdownlint-disable-next-line first-line-h1 -->
-[![OpenSSFScorecard](https://api.securityscorecards.dev/projects/github.com/nginxinc/nginx-prometheus-exporter/badge)](https://api.securityscorecards.dev/projects/github.com/nginxinc/nginx-prometheus-exporter)
+[![OpenSSFScorecard](https://api.securityscorecards.dev/projects/github.com/nginxinc/nginx-prometheus-exporter/badge)](https://scorecard.dev/viewer/?uri=github.com/nginxinc/nginx-prometheus-exporter)
 [![CI](https://github.com/nginxinc/nginx-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/nginxinc/nginx-prometheus-exporter/actions/workflows/ci.yml)
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B5618%2Fgithub.com%2Fnginxinc%2Fnginx-prometheus-exporter.svg?type=shield)](https://app.fossa.com/projects/custom%2B5618%2Fgithub.com%2Fnginxinc%2Fnginx-prometheus-exporter?ref=badge_shield)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nginxinc/nginx-prometheus-exporter)](https://goreportcard.com/report/github.com/nginxinc/nginx-prometheus-exporter)
@@ -113,7 +113,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.3.0 --nginx.scrape-uri=http://<nginx>:8080/stub_status
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.0 --nginx.scrape-uri=http://<nginx>:8080/stub_status
   ```
 
   where `<nginx>` is the IP address/DNS name, through which NGINX is available.
@@ -121,7 +121,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX Plus metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.3.0 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.0 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
   ```
 
   where `<nginx-plus>` is the IP address/DNS name, through which NGINX Plus is available.
