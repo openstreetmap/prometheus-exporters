@@ -1,6 +1,6 @@
 ---
 repository: SuperQ/smokeping_prober
-version: 0.9.0
+version: 0.10.0
 executable: smokeping_prober
 files:
 - LICENSE
