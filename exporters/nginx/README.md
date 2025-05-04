@@ -11,7 +11,6 @@
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/nginx/nginx-prometheus-exporter?logo=go)
 [![Docker Pulls](https://img.shields.io/docker/pulls/nginx/nginx-prometheus-exporter?logo=docker&logoColor=white)](https://hub.docker.com/r/nginx/nginx-prometheus-exporter)
 ![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/nginx/nginx-prometheus-exporter?logo=docker&logoColor=white&sort=semver)
-[![Slack](https://img.shields.io/badge/slack-%23nginx--prometheus--exporter-green?logo=slack)](https://nginxcommunity.slack.com/channels/nginx-prometheus-exporter)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 # NGINX Prometheus Exporter
@@ -113,7 +112,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.0 --nginx.scrape-uri=http://<nginx>:8080/stub_status
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.2 --nginx.scrape-uri=http://<nginx>:8080/stub_status
   ```
 
   where `<nginx>` is the IP address/DNS name, through which NGINX is available.
@@ -121,7 +120,7 @@ To start the exporter we use the [docker run](https://docs.docker.com/engine/ref
 - To export NGINX Plus metrics, run:
 
   ```console
-  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.0 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
+  docker run -p 9113:9113 nginx/nginx-prometheus-exporter:1.4.2 --nginx.plus --nginx.scrape-uri=http://<nginx-plus>:8080/api
   ```
 
   where `<nginx-plus>` is the IP address/DNS name, through which NGINX Plus is available.
@@ -593,9 +592,7 @@ docker buildx imagetools inspect nginx/nginx-prometheus-exporter:edge --format '
 ## Contacts
 
 We’d like to hear your feedback! If you have any suggestions or experience issues with the NGINX Prometheus Exporter,
-please create an issue or send a pull request on GitHub. You can contact us directly via <integrations@nginx.com> or on
-the [NGINX Community Slack](https://nginxcommunity.slack.com/channels/nginx-prometheus-exporter) in the
-`#nginx-prometheus-exporter` channel.
+please create an issue or send a pull request on GitHub. You can contact us on the [NGINX Community Forums](https://community.nginx.org/).
 
 ## Contributing
 
