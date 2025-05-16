@@ -15,7 +15,8 @@ METRICS = {
 
 SERVICES = {
   "OSM Tiles CDN" => "tile.openstreetmap.org",
-  "OSM Community CDN" => "community-cdn.openstreetmap.org"
+  "OSM Community CDN" => "community-cdn.openstreetmap.org",
+  "OSM Vector CDN" => "vector.openstreetmap.org"
 }
 
 bind_address = "0.0.0.0"
