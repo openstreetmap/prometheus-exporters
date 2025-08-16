@@ -23,6 +23,10 @@ jobs:
         bundler-cache: true
     - name: Install binutils-aarch64-linux-gnu
       run: sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu
+    - name: Install UPX
+      uses: crazy-max/ghaction-upx@v3
+      with:
+        install-only: true
     - name: Run updater
       run: bundle exec ruby bin/updater
       env:
