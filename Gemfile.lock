@@ -1,7 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (8.0.2)
+    activesupport (8.0.2.1)
       base64
       benchmark (>= 0.3)
       bigdecimal
@@ -28,7 +28,7 @@ GEM
       logger
     faraday-net_http (3.4.0)
       net-http (>= 0.5.0)
-    git (4.0.4)
+    git (4.0.5)
       activesupport (>= 5.0)
       addressable (~> 2.8)
       process_executer (~> 4.0)
@@ -60,7 +60,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  git (~> 4.0.4)
+  git (~> 4.0.5)
   octokit (~> 10.0.0)
 
 BUNDLED WITH
