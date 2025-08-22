@@ -29,6 +29,7 @@ server = WEBrick::HTTPServer.new(
 rm = DBus::Systemd::Resolved::Manager.new
 
 server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
   response.body = ""
 
   properties = rm.properties

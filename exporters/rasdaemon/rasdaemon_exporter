@@ -53,6 +53,7 @@ server = WEBrick::HTTPServer.new(
 database = SQLite3::Database.new("/var/lib/rasdaemon/ras-mc_event.db", :readonly => true)
 
 server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
   response.body = ""
 
   metrics = Hash[METRICS.map { |name, details| [name, []] }]

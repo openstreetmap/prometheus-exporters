@@ -46,6 +46,7 @@ server = WEBrick::HTTPServer.new(
 )
 
 server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
   response.body = ""
 
   metrics = {}
