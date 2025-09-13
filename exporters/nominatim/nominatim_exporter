@@ -37,6 +37,7 @@ end
 
 requests_total = {}
 request_duration_seconds = {}
+request_wait_seconds = 0.0
 
 TYPES.each do |type|
   requests_total[type] = {}
@@ -62,15 +63,17 @@ end
 
 log_thread = Thread.new do
   File::Tail::Logfile.tail(query_log) do |line|
-    if line =~ /^\[.*\] (\d+\.\d+) (\d+) (\w+) /
+    if line =~ /^\[.*\] (\d+\.\d+) (\d+) ".*" W(\d+\.\d+) /
       duration = Regexp.last_match(1).to_f
       results = Regexp.last_match(2).to_i
       type = Regexp.last_match(3)
+      wait_duration = Regexp.last_match(4).to_f
       match = results > 0 ? "yes" : "no"
 
       type = "lookup" if type == "place"
 
       requests_total[type][match] += 1
+      request_wait_seconds += wait_duration
 
       BUCKETS.each do |bucket|
         if duration <= bucket.to_f
@@ -142,6 +145,10 @@ server.mount_proc "/metrics" do |_request, response|
   response.body << "# HELP nominatim_replication_delay Replication delay in seconds\n";
   response.body << "# TYPE nominatim_replication_delay gauge\n";
   response.body << "nominatim_replication_delay #{replication_delay}\n";
+
+  response.body << "# HELP nominatim_wait_duration_seconds Time spent waiting for a DB connection during a request in seconds\n";
+  response.body << "# TYPE nominatim_wait_duration_seconds counter\n";
+  response.body << "nominatim_wait_duration_seconds #{request_wait_seconds}\n";
 end
 
 server.start
