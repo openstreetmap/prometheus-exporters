@@ -63,7 +63,7 @@ end
 
 log_thread = Thread.new do
   File::Tail::Logfile.tail(query_log) do |line|
-    if line =~ /^\[.*\] (\d+\.\d+) (\d+) ".*" W(\d+\.\d+) /
+    if line =~ /^\[.*\] (\d+\.\d+) (\d+) (\w+) ".*" W(\d+\.\d+) /
       duration = Regexp.last_match(1).to_f
       results = Regexp.last_match(2).to_i
       type = Regexp.last_match(3)
