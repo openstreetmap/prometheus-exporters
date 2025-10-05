@@ -1,6 +1,6 @@
 ---
 repository: prometheus-community/postgres_exporter
-version: 0.18.0
+version: 0.18.1
 files:
 - LICENSE
 - NOTICE
