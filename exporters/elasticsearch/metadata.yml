@@ -5,6 +5,5 @@ files:
 - CHANGELOG.md
 - LICENSE
 - README.md
-- examples/grafana/dashboard.json
 - examples/kubernetes/deployment.yml
 - examples/prometheus/elasticsearch.rules
