@@ -1,0 +1,73 @@
+#!/usr/bin/ruby
+
+require "dbus/systemd"
+require "getoptlong"
+require "webrick"
+
+bind_address = "0.0.0.0"
+port = "10028"
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+rm = DBus::Systemd::Resolved::Manager.new
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  properties = rm.properties
+
+  llmnr_enabled = properties["LLMNR"]
+  mdns_enabled = properties["MulticastDNS"]
+  dnssec_enabled = properties["DNSSECSupported"] ? "yes" : "no"
+  current_transactions, total_transactions = properties["TransactionStatistics"]
+  cache_size, cache_hits, cache_misses = properties["CacheStatistics"]
+  dnssec_secure, dnssec_insecure, dnssec_bogus, dnssec_indeterminate = properties["DNSSECStatistics"]
+
+  response.body << "# HELP resolved_info Information\n";
+  response.body << "# TYPE resolved_info gauge\n";
+  response.body << "resolved_info{llmnr=\"#{llmnr_enabled}\" mdns=\"#{mdns_enabled}\" dnssec=\"#{dnssec_enabled}\"} 1\n";
+
+  response.body << "# HELP resolved_transactions Current transactions\n";
+  response.body << "# TYPE resolved_transactions gauge\n";
+  response.body << "resolved_transactions #{current_transactions}\n";
+
+  response.body << "# HELP resolved_transactions_total Total transactions\n";
+  response.body << "# TYPE resolved_transactions_total counter\n";
+  response.body << "resolved_transactions_total #{total_transactions}\n";
+
+  response.body << "# HELP resolved_cache_entries Current cache size\n";
+  response.body << "# TYPE resolved_cache_entries gauge\n";
+  response.body << "resolved_cache_entries #{cache_size}\n";
+
+  response.body << "# HELP resolved_cache_lookups_total Total cache lookups\n";
+  response.body << "# TYPE resolved_cache_lookups_total counter\n";
+  response.body << "resolved_cache_lookups_total{result=\"hit\"} #{cache_hits}\n";
+  response.body << "resolved_cache_lookups_total{result=\"miss\"} #{cache_misses}\n";
+
+  response.body << "# HELP resolved_dnssec_verdicts_total Total DNSSEC verdicts\n";
+  response.body << "# TYPE resolved_dnssec_verdicts_total counter\n";
+  response.body << "resolved_dnssec_verdicts_total{result=\"secure\"} #{dnssec_secure}\n";
+  response.body << "resolved_dnssec_verdicts_total{result=\"insecure\"} #{dnssec_insecure}\n";
+  response.body << "resolved_dnssec_verdicts_total{result=\"bogus\"} #{dnssec_bogus}\n";
+  response.body << "resolved_dnssec_verdicts_total{result=\"indeterminate\"} #{dnssec_indeterminate}\n";
+end
+
+server.start

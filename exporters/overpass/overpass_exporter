@@ -1,0 +1,129 @@
+#!/usr/bin/ruby
+
+require "date"
+require "getoptlong"
+require "webrick"
+
+METRICS = {
+  "overpass_database_age_seconds" => {
+    :help => "Database age",
+    :type => "gauge"
+  },
+  "overpass_connections" => {
+    :help => "Number of connections",
+    :type => "gauge"
+  },
+  "overpass_request_started_total" => {
+    :help => "Number of requests started",
+    :type => "counter"
+  },
+  "overpass_request_completed_total" => {
+    :help => "Number of requests completed",
+    :type => "counter"
+  }
+}
+
+bind_address = "0.0.0.0"
+port = "9898"
+base_directory = nil
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ],
+  [ "--overpass.base-directory", GetoptLong::REQUIRED_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  when "--overpass.base-directory"
+    base_directory = argument
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  metrics = Hash[METRICS.map { |name, details| [name, []] }]
+
+  version = File.read("#{base_directory}/db/osm_base_version")
+
+  metrics["overpass_database_age_seconds"] << {
+    :database => "osm",
+    :sample => Time.now - DateTime.parse(version).to_time
+  }
+
+  version = File.read("#{base_directory}/db/area_version")
+
+  metrics["overpass_database_age_seconds"] << {
+    :database => "area",
+    :sample => Time.now - DateTime.parse(version).to_time
+  }
+
+  IO.popen(["#{base_directory}/bin/dispatcher", "--osm-base", "--status"]) do |io|
+    io.each do |line|
+      if line =~ /^Number of connected clients:\s+(\d+)$/
+        metrics["overpass_connections"] << {
+          :database => "osm",
+          :sample => Regexp.last_match(1).to_i
+        }
+      elsif line =~ /^Counter of started requests:\s+(\d+)$/
+        metrics["overpass_request_started_total"] << {
+          :database => "osm",
+          :sample => Regexp.last_match(1).to_i
+        }
+      elsif line =~ /^Counter of finished requests:\s+(\d+)$/
+        metrics["overpass_request_completed_total"] << {
+          :database => "osm",
+          :sample => Regexp.last_match(1).to_i
+        }
+      end
+    end
+  end
+
+  IO.popen(["#{base_directory}/bin/dispatcher", "--areas", "--status"]) do |io|
+    io.each do |line|
+      if line =~ /^Number of connected clients:\s+(\d+)$/
+        metrics["overpass_connections"] << {
+          :database => "area",
+          :sample => Regexp.last_match(1).to_i
+        }
+      elsif line =~ /^Counter of started requests:\s+(\d+)$/
+        metrics["overpass_request_started_total"] << {
+          :database => "area",
+          :sample => Regexp.last_match(1).to_i
+        }
+      elsif line =~ /^Counter of finished requests:\s+(\d+)$/
+        metrics["overpass_request_completed_total"] << {
+          :database => "area",
+          :sample => Regexp.last_match(1).to_i
+        }
+      end
+    end
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      response.body << "#{name}{#{labels}} #{sample}\n"
+    end
+  end
+end
+
+server.start

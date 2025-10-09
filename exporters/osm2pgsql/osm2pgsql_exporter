@@ -1,0 +1,51 @@
+#!/usr/bin/ruby
+
+require "getoptlong"
+require "pg"
+require "webrick"
+
+bind_address = "0.0.0.0"
+port = "10027"
+database_name = nil
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ],
+  [ "--database-name", GetoptLong::REQUIRED_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  when "--database-name"
+    database_name = argument
+  end
+end
+
+conn = PG.connect(:dbname => database_name)
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  begin
+    replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from value::timestamptz) FROM osm2pgsql_properties WHERE property = 'replication_timestamp'").values.first.first.to_f
+  rescue PG::UnableToSend
+    conn.reset
+    retry
+  end
+
+  response.body << "# HELP osm2pgsql_replication_delay Replication delay in seconds\n";
+  response.body << "# TYPE osm2pgsql_replication_delay gauge\n";
+  response.body << "osm2pgsql_replication_delay{database=\"#{database_name}\"} #{replication_delay}\n";
+end
+
+server.start

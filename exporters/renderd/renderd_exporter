@@ -1,0 +1,183 @@
+#!/usr/bin/ruby
+
+require "date"
+require "getoptlong"
+require "webrick"
+
+STATISTICS = {
+  "ReqQueueLength" => {
+    :metric => "renderd_queue_length",
+    :queue => "request"
+  },
+  "ReqPrioQueueLength" => {
+    :metric => "renderd_queue_length",
+    :queue => "priority"
+  },
+  "ReqLowQueueLength" => {
+    :metric => "renderd_queue_length",
+    :queue => "low"
+  },
+  "ReqBulkQueueLength" => {
+    :metric => "renderd_queue_length",
+    :queue => "bulk"
+  },
+  "DirtQueueLength" => {
+    :metric => "renderd_queue_length",
+    :queue => "dirty"
+  },
+  "DropedRequest" => {
+    :metric => "renderd_dropped_metatiles_total"
+  },
+  "ReqRendered" => {
+    :metric => "renderd_queue_metatiles_total",
+    :queue => "request"
+  },
+  "TimeRendered" => {
+    :metric => "renderd_queue_seconds_total",
+    :queue => "request"
+  },
+  "ReqPrioRendered" => {
+    :metric => "renderd_queue_metatiles_total",
+    :queue => "priority"
+  },
+  "TimePrioRendered" => {
+    :metric => "renderd_queue_seconds_total",
+    :queue => "priority"
+  },
+  "ReqLowRendered" => {
+    :metric => "renderd_queue_metatiles_total",
+    :queue => "low"
+  },
+  "TimeLowRendered" => {
+    :metric => "renderd_queue_seconds_total",
+    :queue => "low"
+  },
+  "ReqBulkRendered" => {
+    :metric => "renderd_queue_metatiles_total",
+    :queue => "bulk"
+  },
+  "TimeBulkRendered" => {
+    :metric => "renderd_queue_seconds_total",
+    :queue => "bulk"
+  },
+  "DirtyRendered" => {
+    :metric => "renderd_queue_metatiles_total",
+    :queue => "dirty"
+  },
+  "TimeDirtyRendered" => {
+    :metric => "renderd_queue_seconds_total",
+    :queue => "dirty"
+  },
+  "ZoomRendered" => {
+    :metric => "renderd_zoom_metatiles_total"
+  },
+  "TimeRenderedZoom" => {
+    :metric => "renderd_zoom_seconds_total"
+  }
+}
+
+METRICS = {
+  "renderd_queue_length" => {
+    :help => "Number of metatiles queued for rendering",
+    :type => "gauge"
+  },
+  "renderd_dropped_metatiles_total" => {
+    :help => "Number of metatiles dropped due to queue overload",
+    :type => "counter"
+  },
+  "renderd_queue_metatiles_total" => {
+    :help => "Number of metatiles rendered",
+    :type => "counter"
+  },
+  "renderd_queue_seconds_total" => {
+    :help => "Number of seconds spent rendering",
+    :type => "counter"
+  },
+  "renderd_zoom_metatiles_total" => {
+    :help => "Number of metatiles rendered by zoom level",
+    :type => "counter"
+  },
+  "renderd_zoom_seconds_total" => {
+    :help => "Number of seconds spent rendering by zoom level",
+    :type => "counter"
+  }
+}
+
+bind_address = "0.0.0.0"
+port = "9393"
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  metrics = {}
+
+  File.open("/var/run/renderd/renderd.stats").each_line do |line|
+    if line =~ /^([a-z]+)0?([0-9]+)?:\s+([0-9]+)$/i
+      key = Regexp.last_match(1)
+      zoom = Regexp.last_match(2)
+      value = Regexp.last_match(3).to_i
+      statistic = STATISTICS[key]
+      metric = statistic[:metric]
+
+      if key =~ /^Time/
+        value = value / 1000.0
+      end
+
+      value = statistic.slice(:queue).merge(:sample => value)
+
+      value[:zoom] = zoom if zoom
+
+      values = metrics[metric] ||= []
+
+      values.push(value)
+    end
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      response.body << "#{name}{#{labels}} #{sample}\n"
+    end
+  end
+
+  replication_timestamp = if File.exist?("/var/lib/replicate/timestamp.txt")
+                            File.read("/var/lib/replicate/timestamp.txt")
+                          else
+                            %x(osmium fileinfo --extended --get=data.timestamp.last /var/lib/replicate/changes-latest.osc.gz)
+                          end
+
+  replication_delay = Time.now - DateTime.parse(replication_timestamp).to_time
+
+  response.body << "# HELP renderd_replication_delay Replication delay in seconds\n"
+  response.body << "# TYPE renderd_replication_delay gauge\n"
+  response.body << "renderd_replication_delay #{replication_delay}\n"
+end
+
+server.start

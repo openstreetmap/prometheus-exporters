@@ -1,0 +1,156 @@
+#!/usr/bin/ruby
+
+require "date"
+require "file-tail"
+require "getoptlong"
+require "pg"
+require "webrick"
+
+TYPES = %w[reverse search lookup details]
+MATCHES = %w[yes no]
+BUCKETS = %w[0.001 0.0025 0.005 0.01 0.025 0.05 0.1 0.25 0.5 1 2.5 5 10 25 50]
+
+bind_address = "0.0.0.0"
+port = "9393"
+query_log = nil
+database_name = nil
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ],
+  [ "--nominatim.query-log", GetoptLong::REQUIRED_ARGUMENT ],
+  [ "--nominatim.database-name", GetoptLong::REQUIRED_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  when "--nominatim.query-log"
+    query_log = argument
+  when "--nominatim.database-name"
+    database_name = argument
+  end
+end
+
+requests_total = {}
+request_duration_seconds = {}
+request_wait_seconds = 0.0
+
+TYPES.each do |type|
+  requests_total[type] = {}
+  request_duration_seconds[type] = {}
+
+  match = if type == "search"
+            %w[yes no]
+          else
+            %w[yes]
+          end
+
+  MATCHES.each do |match|
+    requests_total[type][match] = 0
+    request_duration_seconds[type][match] = {
+      :count => 0, :sum => 0.0, :buckets => { "+Inf" => 0 }
+    }
+
+    BUCKETS.each do |bucket|
+      request_duration_seconds[type][match][:buckets][bucket] = 0
+    end
+  end
+end
+
+log_thread = Thread.new do
+  File::Tail::Logfile.tail(query_log) do |line|
+    if line =~ /^\[.*\] (\d+\.\d+) (\d+) (\w+) ".*" W(\d+\.\d+) /
+      duration = Regexp.last_match(1).to_f
+      results = Regexp.last_match(2).to_i
+      type = Regexp.last_match(3)
+      wait_duration = Regexp.last_match(4).to_f
+      match = results > 0 ? "yes" : "no"
+
+      type = "lookup" if type == "place"
+
+      requests_total[type][match] += 1
+      request_wait_seconds += wait_duration
+
+      BUCKETS.each do |bucket|
+        if duration <= bucket.to_f
+          request_duration_seconds[type][match][:buckets][bucket] += 1
+        end
+      end
+
+      request_duration_seconds[type][match][:buckets]["+Inf"] += 1
+      request_duration_seconds[type][match][:count] += 1
+      request_duration_seconds[type][match][:sum] += duration
+    end
+  rescue StandardError
+    # Ignore errors parsing log lines
+  end
+end
+
+conn = PG.connect(:dbname => database_name)
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  response.body << "# HELP nominatim_requests_total Number of requests processed\n";
+  response.body << "# TYPE nominatim_requests_total counter\n";
+
+  TYPES.each do |type|
+    MATCHES.each do |match|
+      if sample = requests_total[type][match]
+        response.body << "nominatim_requests_total{type=\"#{type}\",match=\"#{match}\"} #{sample}\n"
+      end
+    end
+  end
+
+  response.body << "# HELP nominatim_request_duration_seconds Duration of request\n";
+  response.body << "# TYPE nominatim_request_duration_seconds histogram\n";
+
+  TYPES.each do |type|
+    MATCHES.each do |match|
+      if histogram = request_duration_seconds[type][match]
+        BUCKETS.each do |bucket|
+          sample = histogram[:buckets][bucket.to_s]
+          response.body << "nominatim_request_duration_seconds_bucket{type=\"#{type}\",match=\"#{match}\",le=\"#{bucket}\"} #{sample}\n"
+        end
+
+        sample = histogram[:buckets]["+Inf"]
+        response.body << "nominatim_request_duration_seconds_bucket{type=\"#{type}\",match=\"#{match}\",le=\"+Inf\"} #{sample}\n"
+
+        sample = histogram[:sum]
+        response.body << "nominatim_request_duration_seconds_sum{type=\"#{type}\",match=\"#{match}\"} #{sample}\n"
+
+        sample = histogram[:count]
+        response.body << "nominatim_request_duration_seconds_count{type=\"#{type}\",match=\"#{match}\"} #{sample}\n"
+      end
+    end
+  end
+
+  begin
+    replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from lastimportdate) FROM import_status").values.first.first.to_f
+  rescue PG::UnableToSend
+    conn.reset
+    retry
+  end
+
+  response.body << "# HELP nominatim_replication_delay Replication delay in seconds\n";
+  response.body << "# TYPE nominatim_replication_delay gauge\n";
+  response.body << "nominatim_replication_delay #{replication_delay}\n";
+
+  response.body << "# HELP nominatim_wait_duration_seconds Time spent waiting for a DB connection during a request in seconds\n";
+  response.body << "# TYPE nominatim_wait_duration_seconds counter\n";
+  response.body << "nominatim_wait_duration_seconds #{request_wait_seconds}\n";
+end
+
+server.start
+
+log_thread.kill

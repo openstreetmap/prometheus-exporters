@@ -1,0 +1,103 @@
+#!/usr/bin/ruby
+
+require "getoptlong"
+require "json"
+require "net/http"
+require "uri"
+require "webrick"
+
+METRICS = {
+  "fastly_healthcheck_status" => {
+    :help => "Fastly healthcheck status",
+    :type => "gauge"
+  }
+}
+
+SERVICES = {
+  "OSM Tiles CDN" => "tile.openstreetmap.org",
+  "OSM Community CDN" => "community-cdn.openstreetmap.org",
+  "OSM Vector CDN" => "vector.openstreetmap.org"
+}
+
+bind_address = "0.0.0.0"
+port = "9696"
+fastly_api_token = ENV["FASTLY_API_TOKEN"]
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  headers = { "Fastly-Key" => fastly_api_token }
+  metrics = Hash[METRICS.map { |name, details| [name, []] }]
+
+  SERVICES.each do |service, host|
+    uri = URI("https://api.fastly.com/content/edge_check?url=https://#{host}/fastly/api/hc-status")
+
+    Net::HTTP.get_response(uri, headers) do |healthcheck|
+      if healthcheck.code == "200"
+        healthcheck = JSON.parse(healthcheck.body)
+
+        healthcheck.each do |pop|
+          datacenter = if pop["server"] =~ /^cache-([a-z]{3})\d+$/
+                         Regexp.last_match(1).upcase
+                       elsif pop["server"] =~ /^cache-([a-z]{3})-[a-z]{4}\d+$/
+                         Regexp.last_match(1).upcase
+                       else
+                         "???"
+                       end
+
+          pop["response"]["headers"].each do |name, value|
+            if name =~ /^x-hcstatus-(\S+)$/
+              metrics["fastly_healthcheck_status"] << {
+                :service => service,
+                :pop => pop["pop"],
+                :datacenter => datacenter,
+                :backend => Regexp.last_match(1),
+                :sample => value.to_i
+              }
+            end
+          end
+        end
+      end
+    end
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      if labels.empty?
+        response.body << "#{name} #{sample}\n"
+      else
+        response.body << "#{name}{#{labels}} #{sample}\n"
+      end
+    end
+  end
+end
+
+server.start

@@ -1,0 +1,110 @@
+#!/usr/bin/ruby
+
+require "getoptlong"
+require "json"
+require "net/http"
+require "uri"
+require "webrick"
+
+METRICS = {
+  "statuscake_up" => {
+    :help => "Whether a StatusCake test is up",
+    :type => "gauge"
+  },
+  "statuscake_paused" => {
+    :help => "Whether a StatusCake test is paused",
+    :type => "gauge"
+  },
+  "statuscake_uptime" => {
+    :help => "Percentage uptime recorded by a StatusCake test",
+    :type => "gauge"
+  }
+}
+
+bind_address = "0.0.0.0"
+port = "9595"
+statuscake_apikey = ENV["STATUSCAKE_APIKEY"]
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  page = 1
+  pages = 1
+  uri = URI("https://api.statuscake.com/v1/uptime")
+  headers = { "Authorization" => "Bearer #{statuscake_apikey}" }
+  metrics = Hash[METRICS.map { |name, details| [name, []] }]
+  
+  while page <= pages
+    uri.query = URI.encode_www_form(:limit => 25, :page => page)
+
+    Net::HTTP.get_response(uri, headers) do |uptime|
+      if uptime.code == "200"
+        uptime = JSON.parse(uptime.body)
+
+        uptime["data"].each do |check|
+          metrics["statuscake_up"] << {
+            :id => check["id"],
+            :name => check["name"],
+            :sample => check["status"] == "up" ? 1 : 0
+          }
+
+          metrics["statuscake_paused"] << {
+            :id => check["id"],
+            :name => check["name"],
+            :sample => check["paused"] ? 1 : 0
+          }
+
+          metrics["statuscake_uptime"] << {
+            :id => check["id"],
+            :name => check["name"],
+            :sample => check["uptime"]
+          }
+        end
+
+        pages = uptime["metadata"]["page_count"]
+      end
+    end
+
+    page = page + 1
+  end
+
+  metrics.each do |name, values|
+    metric = METRICS[name]
+
+    response.body << "# HELP #{name} #{metric[:help]}\n"
+    response.body << "# TYPE #{name} #{metric[:type]}\n"
+
+    values.each do |value|
+      sample = value.delete(:sample)
+      labels = value.collect { |k,v| "#{k}=\"#{v}\"" }.join(",")
+
+      if labels.empty?
+        response.body << "#{name} #{sample}\n"
+      else
+        response.body << "#{name}{#{labels}} #{sample}\n"
+      end
+    end
+  end
+end
+
+server.start

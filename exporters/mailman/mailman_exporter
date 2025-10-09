@@ -1,0 +1,45 @@
+#!/usr/bin/ruby
+
+require "date"
+require "getoptlong"
+require "webrick"
+
+bind_address = "0.0.0.0"
+port = "8083"
+
+options = GetoptLong.new(
+  [ "--web.listen-address", GetoptLong::OPTIONAL_ARGUMENT ]
+)
+
+options.each do |option, argument|
+  case option
+  when "--web.listen-address"
+    match = /^\[(.*)\]:(\d+)$/.match(argument) ||
+            /^(.*):(\d+)$/.match(argument)
+    bind_address = match[1]
+    port = match[2]
+  end
+end
+
+server = WEBrick::HTTPServer.new(
+  :BindAddress => bind_address,
+  :Port => port
+)
+
+server.mount_proc "/metrics" do |_request, response|
+  response.content_type = "text/plain; version=0.0.4; charset=utf-8; escaping=underscores"
+  response.body = ""
+
+  response.body << "# HELP mailman_queue_length Queue length\n"
+  response.body << "# TYPE mailman_queue_length gauge\n"
+
+  Dir.glob("*", :base => "/var/lib/mailman/qfiles").each do |queue|
+    count = Dir.glob("*.pck", :base => "/var/lib/mailman/qfiles/#{queue}").count
+
+    response.body << "mailman_queue_length{queue=\"#{queue}\"} #{count}\n"
+  end
+  
+  response.body
+end
+
+server.start
