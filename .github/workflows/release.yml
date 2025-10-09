@@ -30,12 +30,12 @@ jobs:
           # aarch64-only: exclude */*/*_x86_64
           git archive --format=tar HEAD \
             -- ":(exclude)*/*/*_x86_64" \
-          | zstd -19 -T0 --quiet -o "${AARCHIVE}"
+          | zstd -19 --long -T0 --quiet -o "${AARCHIVE}"
 
           # x86_64-only: exclude */*/*_aarch64
           git archive --format=tar HEAD \
             -- ":(exclude)*/*/*_aarch64" \
-          | zstd -19 -T0 --quiet -o "${XARCHIVE}"
+          | zstd -19 --long -T0 --quiet -o "${XARCHIVE}"
 
           echo "aarchive=${AARCHIVE}" >> "$GITHUB_OUTPUT"
           echo "xarchive=${XARCHIVE}" >> "$GITHUB_OUTPUT"
