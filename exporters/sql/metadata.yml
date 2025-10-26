@@ -1,6 +1,6 @@
 ---
 repository: burningalchemist/sql_exporter
-version: 0.18.2
+version: 0.18.3
 files:
 - LICENSE
 - README.md
