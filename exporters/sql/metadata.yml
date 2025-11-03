@@ -4,5 +4,3 @@ version: 0.18.3
 files:
 - LICENSE
 - README.md
-- examples/mssql_standard.collector.yml
-- examples/sql_exporter.yml
