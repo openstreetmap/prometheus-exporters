@@ -1,7 +1,6 @@
 ---
 repository: hipages/php-fpm_exporter
 version: 2.2.0
-setup: go install github.com/goreleaser/goreleaser@latest
 build: goreleaser build --clean --single-target --output=phpfpm_exporter
 files:
 - LICENSE
