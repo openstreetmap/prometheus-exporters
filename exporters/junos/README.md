@@ -50,8 +50,10 @@ The following metrics are supported by now:
 * License statistics (installed/used/needed)
 * L2circuits (tunnel state, number of tunnels)
 * LDP (number of neighbors, sessions and session states)
+* LLDP (local port, local parent interface, remote port and remote system name)
 * VRRP (state per interface)
 * Subscribers Information (show subscribers client-type dhcp detail)
+* PoE (show poe interface)
 
 ## Feature specific mappings
 Some collected time series behave like enums - Integer values represent a certain state/meaning.
