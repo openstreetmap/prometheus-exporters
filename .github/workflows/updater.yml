@@ -30,7 +30,9 @@ jobs:
       with:
         install-only: true
     - name: Install binutils-aarch64-linux-gnu
-      run: sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu
+      run: |
+        sudo apt-get update -y && \
+        sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu
     - name: Run updater
       run: bundle exec ruby bin/updater
       env:
