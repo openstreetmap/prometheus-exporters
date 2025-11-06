@@ -1,8 +1,13 @@
-name: Build split-arch release
+name: Build release
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'collectors/**'
+      - 'exporters/**'
+      - '!exporters/**/metadata.yml'
 
 permissions:
   contents: write  # required to create releases and upload assets
@@ -48,7 +53,7 @@ jobs:
           set -euo pipefail
           TAG="split-${{ github.ref_name }}-${{ steps.build.outputs.ts }}"
           TITLE="Split release ${TAG}"
-          NOTES=$'Auto-generated from main\n\nAssets:\n- aarch64-only (x86_64 files removed)\n- x86_64-only (aarch64 files removed)'
+          NOTES=$'Auto-generated from main\n\nAssets:\n- aarch64-only\n- x86_64-only'
 
           gh release create "$TAG" \
             "${{ steps.build.outputs.aarchive }}" \
