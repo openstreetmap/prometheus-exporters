@@ -1,6 +1,6 @@
 ---
 repository: prometheus/memcached_exporter
-version: 0.15.4
+version: 0.15.5
 files:
 - CHANGELOG.md
 - LICENSE
