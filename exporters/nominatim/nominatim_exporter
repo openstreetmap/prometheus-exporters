@@ -137,7 +137,7 @@ server.mount_proc "/metrics" do |_request, response|
 
   begin
     replication_delay = Time.now.utc.to_f - conn.exec("SELECT extract(epoch from lastimportdate) FROM import_status").values.first.first.to_f
-  rescue PG::UnableToSend
+  rescue PG::UnableToSend, PG::ConnectionBad
     conn.reset
     retry
   end
