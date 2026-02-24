@@ -1,4 +1,4 @@
-#!/opt/chef/embedded/bin/ruby
+#!/opt/cinc/embedded/bin/ruby
 
 require "json"
 require "ohai"
@@ -11,7 +11,7 @@ controllers = []
 arrays = []
 disks = []
 
-ohai = Ohai::System.new(:directory => "/etc/chef/ohai")
+ohai = Ohai::System.new(:directory => "/etc/cinc/ohai")
 
 ohai = ohai.all_plugins(["hardware"])
 
