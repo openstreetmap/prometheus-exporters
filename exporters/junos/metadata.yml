@@ -1,6 +1,6 @@
 ---
 repository: czerwonk/junos_exporter
-version: 0.15.3
+version: 0.15.4
 build: goreleaser build --clean --single-target --output=junos_exporter
 files:
 - LICENSE
