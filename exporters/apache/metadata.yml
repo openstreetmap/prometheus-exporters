@@ -1,5 +1,5 @@
 ---
 repository: Lusitaniae/apache_exporter
-version: 1.0.12
+version: 1.1.0
 files:
 - LICENSE
