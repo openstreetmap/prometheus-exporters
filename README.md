@@ -27,6 +27,7 @@ Prometheus exporters used on OpenStreetMap servers, stored here for ease of depl
 | osm2pgsql | N/A |
 | overpass | N/A |
 | passenger | https://github.com/Intellection/passenger-exporter |
+| pgbackrest | https://github.com/woblerr/pgbackrest_exporter |
 | phpfpm | https://github.com/hipages/php-fpm_exporter |
 | postgres | https://github.com/prometheus-community/postgres_exporter |
 | rasdaemon | N/A |

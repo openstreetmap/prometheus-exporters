@@ -1,0 +1,6 @@
+---
+repository: woblerr/pgbackrest_exporter
+version: 0.23.0
+build: goreleaser build --clean --single-target --output=pgbackrest_exporter
+files:
+- LICENSE
