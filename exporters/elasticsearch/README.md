@@ -21,6 +21,13 @@ docker pull quay.io/prometheuscommunity/elasticsearch-exporter:latest
 docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch-exporter:latest
 ```
 
+Images are also published to GHCR:
+
+```bash
+docker pull ghcr.io/prometheus-community/elasticsearch-exporter:latest
+docker run --rm -p 9114:9114 ghcr.io/prometheus-community/elasticsearch-exporter:latest
+```
+
 Example `docker-compose.yml`:
 
 ```yaml
@@ -65,7 +72,7 @@ elasticsearch_exporter --help
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`).                                                                                                                                                                                                                                                                         | false |
 | collector.snapshots     | 1.0.4rc1              | If true, query stats for the cluster snapshots. (As of v1.7.0, this flag has replaced "es.snapshots").                                                                                                                                                                                                                                                                                | false |
 | collector.health-report | 1.10.0                 | If true, query the health report (requires elasticsearch 8.7.0 or later)                                                                                                                                                                                                                                                                                                              | false |
-| es.slm                  |                       | If true, query stats for SLM.                                                                                                                                                                                                                                                                                                                                                         | false |
+| collector.slm                  |                       | If true, query stats for SLM.                                                                                                                                                                                                                                                                                                                                                         | false |
 | es.data_stream          |                       | If true, query state for Data Steams.                                                                                                                                                                                                                                                                                                                                                 | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s)                                                                                                                                                                                                                                                                                                                         | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.                                                                                                                                                                                                                                                                                      | |
@@ -105,7 +112,7 @@ es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 collector.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
-es.slm | `manage_slm`
+collector.slm | `manage_slm`
 es.data_stream | `monitor` or `manage` (per index or `*`) |
 
 Further Information
@@ -181,7 +188,7 @@ See the [metrics documentation](metrics.md)
 
 ### Alerts & Recording Rules
 
-We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
+We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as a [Grafana](http://www.grafana.org) [Dashboard](elasticsearch-mixin/compiled/dashboards/cluster.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
 The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
