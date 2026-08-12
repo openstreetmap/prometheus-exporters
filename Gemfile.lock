@@ -27,7 +27,7 @@ GEM
       logger
     faraday-net_http (3.4.4)
       net-http (~> 0.5)
-    git (5.0.4)
+    git (5.0.5)
       activesupport (>= 5.0)
       addressable (~> 2.8)
       process_executer (~> 4.0)
@@ -64,7 +64,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  git (~> 5.0.4)
+  git (~> 5.0.5)
   octokit (~> 10.0.0)
 
 BUNDLED WITH
