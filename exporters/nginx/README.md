@@ -1,13 +1,11 @@
 <!-- markdownlint-disable-next-line first-line-h1 -->
 [![OpenSSFScorecard](https://api.securityscorecards.dev/projects/github.com/nginx/nginx-prometheus-exporter/badge)](https://scorecard.dev/viewer/?uri=github.com/nginx/nginx-prometheus-exporter)
 [![CI](https://github.com/nginx/nginx-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/nginx/nginx-prometheus-exporter/actions/workflows/ci.yml)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B5618%2Fgithub.com%2Fnginx%2Fnginx-prometheus-exporter.svg?type=shield)](https://app.fossa.com/projects/custom%2B5618%2Fgithub.com%2Fnginx%2Fnginx-prometheus-exporter?ref=badge_shield)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nginx/nginx-prometheus-exporter)](https://goreportcard.com/report/github.com/nginx/nginx-prometheus-exporter)
 [![codecov](https://codecov.io/gh/nginx/nginx-prometheus-exporter/graph/badge.svg?token=J6Oz10LWy3)](https://codecov.io/gh/nginx/nginx-prometheus-exporter)
 ![GitHub all releases](https://img.shields.io/github/downloads/nginx/nginx-prometheus-exporter/total?logo=github)
 ![GitHub release (latest by SemVer)](https://img.shields.io/github/downloads/nginx/nginx-prometheus-exporter/latest/total?sort=semver&logo=github)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/nginx/nginx-prometheus-exporter?logo=github&sort=semver)](https://github.com/nginx/nginx-prometheus-exporter/releases/latest)
-[![nginx-prometheus-exporter](https://snapcraft.io/nginx-prometheus-exporter/badge.svg)](https://snapcraft.io/nginx-prometheus-exporter)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/nginx/nginx-prometheus-exporter?logo=go)
 [![Docker Pulls](https://img.shields.io/docker/pulls/nginx/nginx-prometheus-exporter?logo=docker&logoColor=white)](https://hub.docker.com/r/nginx/nginx-prometheus-exporter)
 ![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/nginx/nginx-prometheus-exporter?logo=docker&logoColor=white&sort=semver)
@@ -49,12 +47,12 @@ NGINX Prometheus exporter makes it possible to monitor NGINX or NGINX Plus using
     - [Stream Connections Limiting](#stream-connections-limiting)
     - [Cache](#cache)
     - [Worker](#worker)
+    - [License](#license)
 - [Troubleshooting](#troubleshooting)
 - [Releases](#releases)
   - [Docker images](#docker-images)
   - [Binaries](#binaries)
   - [Homebrew](#homebrew)
-  - [Snap](#snap)
   - [Scoop](#scoop)
   - [Nix](#nix)
 - [Building the Exporter](#building-the-exporter)
@@ -68,7 +66,7 @@ NGINX Prometheus exporter makes it possible to monitor NGINX or NGINX Plus using
 - [Contacts](#contacts)
 - [Contributing](#contributing)
 - [Support](#support)
-- [License](#license)
+- [License](#license-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -251,18 +249,18 @@ Flags:
 
 #### [HTTP Server Zones](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_http_server_zone)
 
-| Name                                     | Type    | Description                                        | Labels                                                                                                                                     |
-| ---------------------------------------- | ------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `nginxplus_server_zone_processing`       | Gauge   | Client requests that are currently being processed | `server_zone`                                                                                                                              |
-| `nginxplus_server_zone_requests`         | Counter | Total client requests                              | `server_zone`                                                                                                                              |
-| `nginxplus_server_zone_responses`        | Counter | Total responses sent to clients                    | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `server_zone`                                     |
+| Name                                     | Type    | Description                                        | Labels                                                                                                                                                            |
+| ---------------------------------------- | ------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nginxplus_server_zone_processing`       | Gauge   | Client requests that are currently being processed | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_zone_requests`         | Counter | Total client requests                              | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_zone_responses`        | Counter | Total responses sent to clients                    | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `server_zone`                                                            |
 | `nginxplus_server_zone_responses_codes`  | Counter | Total responses sent to clients by code            | `code` (the response status code. The [possible values](https://www.nginx.com/resources/wiki/extending/api/http/) are available on the NGINX Wiki), `server_zone` |
-| `nginxplus_server_zone_discarded`        | Counter | Requests completed without sending a response      | `server_zone`                                                                                                                              |
-| `nginxplus_server_zone_received`         | Counter | Bytes received from clients                        | `server_zone`                                                                                                                              |
-| `nginxplus_server_zone_sent`             | Counter | Bytes sent to clients                              | `server_zone`                                                                                                                              |
-| `nginxplus_server_ssl_handshakes`        | Counter | Successful SSL handshakes                          | `server_zone`                                                                                                                              |
-| `nginxplus_server_ssl_handshakes_failed` | Counter | Failed SSL handshakes                              | `server_zone`                                                                                                                              |
-| `nginxplus_server_ssl_session_reuses`    | Counter | Session reuses during SSL handshake                | `server_zone`                                                                                                                              |
+| `nginxplus_server_zone_discarded`        | Counter | Requests completed without sending a response      | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_zone_received`         | Counter | Bytes received from clients                        | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_zone_sent`             | Counter | Bytes sent to clients                              | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_ssl_handshakes`        | Counter | Successful SSL handshakes                          | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_ssl_handshakes_failed` | Counter | Failed SSL handshakes                              | `server_zone`                                                                                                                                                     |
+| `nginxplus_server_ssl_session_reuses`    | Counter | Session reuses during SSL handshake                | `server_zone`                                                                                                                                                     |
 
 #### [Stream Server Zones](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_stream_server_zone)
 
@@ -283,28 +281,28 @@ Flags:
 > Note: for the `state` metric, the string values are converted to float64 using the following rule: `"up"` -> `1.0`,
 > `"draining"` -> `2.0`, `"down"` -> `3.0`, `"unavail"` –> `4.0`, `"checking"` –> `5.0`, `"unhealthy"` -> `6.0`.
 
-| Name                                                | Type    | Description                                                                                                                                                    | Labels                                                                                                                                            |
-| --------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nginxplus_upstream_server_state`                   | Gauge   | Current state                                                                                                                                                  | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_active`                  | Gauge   | Active connections                                                                                                                                             | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_limit`                   | Gauge   | Limit for connections which corresponds to the max_conns parameter of the upstream server. Zero value means there is no limit                                  | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_requests`                | Counter | Total client requests                                                                                                                                          | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_responses`               | Counter | Total responses sent to clients                                                                                                                                | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `server`, `upstream`                                     |
+| Name                                                | Type    | Description                                                                                                                                                    | Labels                                                                                                                                                                   |
+| --------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `nginxplus_upstream_server_state`                   | Gauge   | Current state                                                                                                                                                  | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_active`                  | Gauge   | Active connections                                                                                                                                             | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_limit`                   | Gauge   | Limit for connections which corresponds to the max_conns parameter of the upstream server. Zero value means there is no limit                                  | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_requests`                | Counter | Total client requests                                                                                                                                          | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_responses`               | Counter | Total responses sent to clients                                                                                                                                | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `server`, `upstream`                                                            |
 | `nginxplus_upstream_server_responses_codes`         | Counter | Total responses sent to clients by code                                                                                                                        | `code` (the response status code. The [possible values](https://www.nginx.com/resources/wiki/extending/api/http/) are available on the NGINX Wiki), `server`, `upstream` |
-| `nginxplus_upstream_server_sent`                    | Counter | Bytes sent to this server                                                                                                                                      | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_received`                | Counter | Bytes received to this server                                                                                                                                  | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_fails`                   | Counter | Number of unsuccessful attempts to communicate with the server                                                                                                 | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_unavail`                 | Counter | How many times the server became unavailable for client requests (state 'unavail') due to the number of unsuccessful attempts reaching the max_fails threshold | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_header_time`             | Gauge   | Average time to get the response header from the server                                                                                                        | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_response_time`           | Gauge   | Average time to get the full response from the server                                                                                                          | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_health_checks_checks`    | Counter | Total health check requests                                                                                                                                    | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_health_checks_fails`     | Counter | Failed health checks                                                                                                                                           | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_health_checks_unhealthy` | Counter | How many times the server became unhealthy (state 'unhealthy')                                                                                                 | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_ssl_handshakes`          | Counter | Successful SSL handshakes                                                                                                                                      | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_ssl_handshakes_failed`   | Counter | Failed SSL handshakes                                                                                                                                          | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_server_ssl_session_reuses`      | Counter | Session reuses during SSL handshake                                                                                                                            | `server`, `upstream`                                                                                                                              |
-| `nginxplus_upstream_keepalive`                      | Gauge   | Idle keepalive connections                                                                                                                                     | `upstream`                                                                                                                                        |
-| `nginxplus_upstream_zombies`                        | Gauge   | Servers removed from the group but still processing active client requests                                                                                     | `upstream`                                                                                                                                        |
+| `nginxplus_upstream_server_sent`                    | Counter | Bytes sent to this server                                                                                                                                      | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_received`                | Counter | Bytes received to this server                                                                                                                                  | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_fails`                   | Counter | Number of unsuccessful attempts to communicate with the server                                                                                                 | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_unavail`                 | Counter | How many times the server became unavailable for client requests (state 'unavail') due to the number of unsuccessful attempts reaching the max_fails threshold | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_header_time`             | Gauge   | Average time to get the response header from the server                                                                                                        | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_response_time`           | Gauge   | Average time to get the full response from the server                                                                                                          | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_health_checks_checks`    | Counter | Total health check requests                                                                                                                                    | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_health_checks_fails`     | Counter | Failed health checks                                                                                                                                           | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_health_checks_unhealthy` | Counter | How many times the server became unhealthy (state 'unhealthy')                                                                                                 | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_ssl_handshakes`          | Counter | Successful SSL handshakes                                                                                                                                      | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_ssl_handshakes_failed`   | Counter | Failed SSL handshakes                                                                                                                                          | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_server_ssl_session_reuses`      | Counter | Session reuses during SSL handshake                                                                                                                            | `server`, `upstream`                                                                                                                                                     |
+| `nginxplus_upstream_keepalive`                      | Gauge   | Idle keepalive connections                                                                                                                                     | `upstream`                                                                                                                                                               |
+| `nginxplus_upstream_zombies`                        | Gauge   | Servers removed from the group but still processing active client requests                                                                                     | `upstream`                                                                                                                                                               |
 
 #### [Stream Upstreams](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_stream_upstream)
 
@@ -346,14 +344,14 @@ Flags:
 
 #### [Location Zones](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_http_location_zone)
 
-| Name                                      | Type    | Description                                   | Labels                                                                                                                                       |
-| ----------------------------------------- | ------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nginxplus_location_zone_requests`        | Counter | Total client requests                         | `location_zone`                                                                                                                              |
-| `nginxplus_location_zone_responses`       | Counter | Total responses sent to clients               | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `location_zone`                                     |
+| Name                                      | Type    | Description                                   | Labels                                                                                                                                                              |
+| ----------------------------------------- | ------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nginxplus_location_zone_requests`        | Counter | Total client requests                         | `location_zone`                                                                                                                                                     |
+| `nginxplus_location_zone_responses`       | Counter | Total responses sent to clients               | `code` (the response status code. The values are: `1xx`, `2xx`, `3xx`, `4xx` and `5xx`), `location_zone`                                                            |
 | `nginxplus_location_zone_responses_codes` | Counter | Total responses sent to clients by code       | `code` (the response status code. The [possible values](https://www.nginx.com/resources/wiki/extending/api/http/) are available on the NGINX Wiki), `location_zone` |
-| `nginxplus_location_zone_discarded`       | Counter | Requests completed without sending a response | `location_zone`                                                                                                                              |
-| `nginxplus_location_zone_received`        | Counter | Bytes received from clients                   | `location_zone`                                                                                                                              |
-| `nginxplus_location_zone_sent`            | Counter | Bytes sent to clients                         | `location_zone`                                                                                                                              |
+| `nginxplus_location_zone_discarded`       | Counter | Requests completed without sending a response | `location_zone`                                                                                                                                                     |
+| `nginxplus_location_zone_received`        | Counter | Bytes received from clients                   | `location_zone`                                                                                                                                                     |
+| `nginxplus_location_zone_sent`            | Counter | Bytes sent to clients                         | `location_zone`                                                                                                                                                     |
 
 #### [Resolver](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_resolver_zone)
 
@@ -434,6 +432,15 @@ Flags:
 | `nginxplus_worker_http_requests_total`   | Counter | The total number of client requests received                             | `id`, `pid` |
 | `nginxplus_worker_http_requests_current` | Gauge   | The current number of client requests that are currently being processed | `id`, `pid` |
 
+#### [License](https://nginx.org/en/docs/http/ngx_http_api_module.html#def_nginx_license_object)
+
+| Name                                               | Type  | Description                                                                                      | Labels |
+| -------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------ | ------ |
+| `nginxplus_license_expiration_timestamp_seconds`   | Gauge | License expiration date (expressed as Unix Epoch Time)                                           | []     |
+| `nginxplus_license_reporting_fails_count`          | Gauge | Number of failed reporting attempts, reset each time the usage report is successfully sent       | []     |
+| `nginxplus_license_reporting_grace_period_seconds` | Gauge | Number of seconds before traffic processing is stopped after unsuccessful report attempt         | []     |
+| `nginxplus_license_reporting_healthy`              | Gauge | Indicates whether the reporting state is still considered healthy despite recent failed attempts | []     |
+
 Connect to the `/metrics` page of the running exporter to see the complete list of metrics along with their
 descriptions. Note: to see server zones related metrics you must configure [status
 zones](https://nginx.org/en/docs/http/ngx_http_api_module.html#status_zone) and to see upstream related metrics you
@@ -473,14 +480,6 @@ and then install the formula with
 
 ```console
 brew install nginx-prometheus-exporter
-```
-
-### Snap
-
-You can install the NGINX Prometheus Exporter from the [Snap Store](https://snapcraft.io/nginx-prometheus-exporter).
-
-```console
-snap install nginx-prometheus-exporter
 ```
 
 ### Scoop
