@@ -1,4 +1,4 @@
 ---
 repository: czerwonk/atlas_exporter
-version: 1.0.5
+version: 1.0.6
 build: goreleaser build --clean --single-target --output=atlas_exporter
