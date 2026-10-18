@@ -47,6 +47,7 @@ The following metrics are supported by now:
 - ISIS (number of adjacencies, total number of routers)
 - NAT (all available statistics from services nat)
 - Chassis cluster HA status (SRX)
+- Virtual chassis status
 - Environment (temperatures, fans and PEM power statistics)
 - EVPN (per-EVI state, neighbor route counts, detail tables for interfaces / IRBs / bridge-domains / ESIs with DF election, duplicate-MAC detection, L3 contexts)
 - EVPN Type-5 / IP-prefix database (per-context per-AFI local + remote prefix counts, accepted/rejected advertisements) — separate flag (`-evpn_ip_prefix.enabled`) because the response scales with prefix count
@@ -69,12 +70,69 @@ The following metrics are supported by now:
 
 ## Scrape metrics
 
+Alongside the device metrics, every scrape emits:
+
 | Metric | Labels | Meaning |
 | --- | --- | --- |
 | `junos_exporter_build_info` | `version`, `revision`, `branch`, `goversion`, `builddate` | Always `1`. Identifies which build produced the scrape. |
+| `junos_up` | `target` | `1` once an SSH connection to the target is established, `0` if it could not be. |
+| `junos_collector_duration_seconds` | `target` | Duration of the whole scrape for one target. |
+| `junos_collect_duration_seconds` | `target`, `collector` | Duration of a single collector. |
+| `junos_collect_success` | `target`, `collector` | `1` if the collector succeeded, `0` if it returned an error. |
 
-The labels are populated at build time via `-ldflags -X`. A binary built without
-them reports the fallback values compiled into `main.go`.
+The `build_info` labels are populated at build time via `-ldflags -X`. A binary built
+without them reports the fallback values compiled into `main.go`.
+
+`junos_collect_success` is the metric to alert on. Without it a collector that fails
+every scrape is indistinguishable from a device that does not have the feature, because
+both simply produce no series:
+
+```
+junos_collect_success == 0
+```
+
+Note that 14 features are enabled by default (alarm, bgp, environment, firewall,
+interfaces, interface diagnostics, interface queues, isis, ldp, macsec, ospf, routes,
+routing engine, system statistics). On a device that does not support one of them the
+underlying RPC fails, so `junos_collect_success` will sit at `0` for that collector until
+the feature is disabled for that device. Disable unsupported features per device in the
+config file rather than ignoring the metric.
+
+## Exporter metrics
+
+The exporter reports on itself at `/metrics/exporter` (or `<telemetry-path>/exporter` when
+`-web.telemetry-path` is set). This path never contacts a device, so it is cheap to scrape
+at any interval:
+
+| Metric | Meaning |
+| --- | --- |
+| `go_*` | Go runtime: goroutines, heap, GC, threads. |
+| `process_*` | Process: CPU, resident memory, open file descriptors, start time. |
+| `junos_exporter_config_last_reload_successful` | `1` if the last configuration load succeeded, `0` if it failed. |
+| `junos_exporter_config_last_reload_success_timestamp_seconds` | Timestamp of the last load that succeeded. |
+
+`go_goroutines` and `process_open_fds` are the ones to watch: the exporter holds an SSH
+connection per device and starts a goroutine per device per scrape, so both grow if
+connections are not released.
+
+A failed reload leaves the previous configuration in service, so it is otherwise only
+visible in the logs:
+
+```
+junos_exporter_config_last_reload_successful == 0
+```
+
+These metrics are served separately from the device metrics because `<telemetry-path>`
+takes a `target` parameter. Serving them there would repeat every runtime metric once per
+device.
+
+```yaml
+scrape_configs:
+  - job_name: junos_exporter
+    metrics_path: /metrics/exporter
+    static_configs:
+      - targets: ['junos-exporter:9326']
+```
 
 ## Feature specific mappings
 
@@ -259,6 +317,15 @@ In this example we want to scrape 3 hosts:
 ```bash
 docker run -d --restart unless-stopped -p 9326:9326 -e SSH_KEYFILE=/ssh-keyfile -v /opt/junos_exporter_keyfile:/ssh-keyfile:ro -v /opt/junos_exporter_config.yml:/config.yml:ro czerwonk/junos_exporter
 ```
+
+Images are also published to the GitHub Container Registry, from the same workflow run and with the
+same tags:
+
+```bash
+docker run -d --restart unless-stopped -p 9326:9326 -e SSH_KEYFILE=/ssh-keyfile -v /opt/junos_exporter_keyfile:/ssh-keyfile:ro -v /opt/junos_exporter_config.yml:/config.yml:ro ghcr.io/czerwonk/junos_exporter
+```
+
+Both registries provide `linux/amd64`, `linux/arm64` and `linux/arm/v7`.
 
 The image is based on `gcr.io/distroless/static-debian13:nonroot` and runs as UID `65532` without a shell.
 Mounted files (e.g. the SSH key) must be readable by this user (e.g. `chown 65532 /opt/junos_exporter_keyfile`),
@@ -471,6 +538,7 @@ features:
   system_statistics: true
   twamp: false
   ufd: false
+  virtual_chassis: false
   vpws: false
   vrrp: false
 ```
